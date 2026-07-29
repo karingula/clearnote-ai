@@ -13,5 +13,5 @@ def test_health_check() -> None:
     assert response.json() == {
         "status": "healthy",
         "service": "clearnote-api",
-        "version": "0.1.0",
+        "version": "0.2.0",
     }
