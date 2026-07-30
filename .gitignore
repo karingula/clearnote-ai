@@ -21,6 +21,7 @@ backend/storage/
 *.mp4
 *.m4a
 *.wav
+!backend/storage/audio/.gitkeep
 
 # Node
 frontend/node_modules/
