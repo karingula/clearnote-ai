@@ -2,7 +2,7 @@
 
 ClearNote AI is a privacy-conscious AI application that transforms recorded conversations into reviewable transcripts, structured summaries, decisions, and action items.
 
-The project is being built incrementally as a production-oriented AI engineering portfolio project.
+The project is being developed incrementally as a production-oriented AI engineering portfolio project.
 
 ## Current Status
 
@@ -13,14 +13,17 @@ The application currently supports:
 * Frontend-to-backend connectivity
 * API health check
 * Audio file uploads
-* Audio type and size validation
-* Local audio file storage
-* Unique recording IDs
+* Audio MIME-type validation
+* Maximum file-size validation
+* Local audio storage
+* Unique UUID-based recording identifiers
 * SQLite database persistence
-* SQLAlchemy async ORM
-* Recording metadata retrieval by ID
+* Asynchronous SQLAlchemy ORM
+* Recording retrieval by ID
 * Automated backend tests
 * Interactive OpenAPI documentation
+
+Transcription and AI-generated notes have not yet been implemented.
 
 ## Current Workflow
 
@@ -39,8 +42,6 @@ Return the persisted recording
     ↓
 Retrieve the recording later by ID
 ```
-
-Transcription and AI-generated structured notes will be added in later phases.
 
 ## Technology Stack
 
@@ -65,10 +66,11 @@ Transcription and AI-generated structured notes will be added in later phases.
 
 ### Development Tools
 
-* Git and GitHub
+* Git
+* GitHub
 * FFmpeg
 * Docker Desktop
-* FastAPI interactive documentation
+* FastAPI OpenAPI documentation
 
 ## Project Structure
 
@@ -106,7 +108,7 @@ clearnote-ai/
 
 ## Prerequisites
 
-Install the following tools:
+Install the following:
 
 * Python 3.11
 * Node.js 20.9 or newer
@@ -135,7 +137,7 @@ Create the local backend environment file:
 cp .env.example .env
 ```
 
-The default local configuration is:
+The default local database configuration is:
 
 ```env
 DATABASE_URL=sqlite+aiosqlite:///./clearnote.db
@@ -190,7 +192,7 @@ The database file is created at:
 backend/clearnote.db
 ```
 
-The file is excluded from Git.
+The database file is excluded from Git.
 
 The backend uses:
 
@@ -200,9 +202,9 @@ The backend uses:
 * `aiosqlite`
 * SQLAlchemy declarative models
 
-### Recording Table
+### Recording Metadata
 
-Each uploaded recording persists the following metadata:
+Each uploaded recording persists:
 
 * Recording ID
 * Original filename
@@ -212,7 +214,9 @@ Each uploaded recording persists the following metadata:
 * Processing status
 * Creation timestamp
 
-Recording IDs use SQLAlchemy's database-agnostic UUID type. SQLite stores the UUID as a character value while the Python application works with `UUID` objects.
+Recording IDs use SQLAlchemy's database-agnostic `Uuid` type.
+
+SQLite stores the UUID internally as a character value, while the Python application works with `UUID` objects.
 
 ### Inspect the Local Database
 
@@ -228,18 +232,19 @@ List tables:
 .tables
 ```
 
-Inspect the recordings schema:
+Inspect the recordings table:
 
 ```sql
 .schema recordings
 ```
 
-View stored recordings:
+View persisted recordings:
 
 ```sql
 SELECT
     id,
     original_filename,
+    stored_filename,
     content_type,
     size_bytes,
     status,
@@ -288,7 +293,7 @@ Uploaded files are stored locally in:
 backend/storage/audio/
 ```
 
-Uploaded media files are excluded from Git.
+Uploaded audio files are excluded from Git.
 
 ### Test Through FastAPI Docs
 
@@ -298,7 +303,7 @@ Uploaded media files are excluded from Git.
 4. Select an audio file.
 5. Click **Execute**.
 
-A successful upload returns HTTP `201`.
+A successful request returns HTTP `201`.
 
 ### Test With curl
 
@@ -344,11 +349,11 @@ An unknown recording ID returns HTTP `404`.
 
 ## API Endpoints
 
-| Method | Endpoint                         | Description                                       |
-| ------ | -------------------------------- | ------------------------------------------------- |
-| GET    | `/health`                        | Returns API health information                    |
-| POST   | `/api/recordings`                | Validates, stores and persists an audio recording |
-| GET    | `/api/recordings/{recording_id}` | Retrieves recording metadata by ID                |
+| Method | Endpoint                         | Description                                        |
+| ------ | -------------------------------- | -------------------------------------------------- |
+| `GET`  | `/health`                        | Returns API health information                     |
+| `POST` | `/api/recordings`                | Validates, stores, and persists an audio recording |
+| `GET`  | `/api/recordings/{recording_id}` | Retrieves recording metadata by ID                 |
 
 ## Run Tests
 
@@ -366,7 +371,7 @@ Current tests cover:
 * Unsupported file rejection
 * Empty audio-file rejection
 
-Database integration tests will be expanded in the next phase.
+Database integration tests will be expanded in a later phase.
 
 ## Development Roadmap
 
@@ -378,8 +383,8 @@ Database integration tests will be expanded in the next phase.
 * Frontend-to-backend connection
 * Health-check endpoint
 * Audio upload API
-* File type validation
-* File size validation
+* File-type validation
+* File-size validation
 * Local audio storage
 * SQLite database setup
 * SQLAlchemy async integration
@@ -389,16 +394,16 @@ Database integration tests will be expanded in the next phase.
 
 ### Next
 
+* Alembic database migrations
 * Database integration tests
-* Alembic migrations
 * Recording list endpoint
-* Recording deletion and cleanup
+* Recording deletion
 * Local Whisper transcription
 * Timestamped transcript segments
-* Recording processing status updates
+* Processing-status updates
 * Structured AI note generation
 * Human review and editing
-* JSON and Markdown export
+* JSON and Markdown exports
 * Docker Compose
 * PostgreSQL
 * Background job processing
@@ -418,13 +423,13 @@ Do not upload:
 
 Use synthetic, public, or personally created test audio only.
 
-Frontend environment variables prefixed with `NEXT_PUBLIC_` are visible to browser users and must never contain secrets.
+Frontend variables prefixed with `NEXT_PUBLIC_` are visible to browser users and must never contain secrets.
 
-API keys, database credentials, AWS credentials, and signing secrets must only be stored in backend environment variables.
+API keys, database passwords, AWS credentials, and signing secrets must remain in backend environment variables.
 
 ## Local Files Excluded From Git
 
-The following local files should not be committed:
+The following files should not be committed:
 
 ```text
 backend/.env
