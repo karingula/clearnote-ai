@@ -1,13 +1,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.recording import RecordingStatus
 
 
 class RecordingResponse(BaseModel):
-    """Information returned after an audio file is uploaded."""
+    """Recording data returned through the API."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -18,3 +18,19 @@ class RecordingResponse(BaseModel):
     size_bytes: int
     status: RecordingStatus
     created_at: datetime
+
+
+class RecordingListResponse(BaseModel):
+    """Paginated list of recordings."""
+
+    items: list[RecordingResponse]
+    total: int
+    limit: int = Field(ge=1)
+    offset: int = Field(ge=0)
+
+
+class RecordingDeleteResponse(BaseModel):
+    """Confirmation returned after deleting a recording."""
+
+    id: UUID
+    deleted: bool

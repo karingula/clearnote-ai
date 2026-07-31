@@ -3,6 +3,7 @@ pydantic-settings
 sqlalchemy
 aiosqlite
 alembic
+asgi-lifespan
 python-multipart
 httpx
 pytest
