@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
 from app.models.base import Base
-from app.models.recording import Recording  # noqa: F401
+import app.models # noqa: F401
+
 
 
 config = context.config

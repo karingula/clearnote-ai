@@ -4,6 +4,7 @@ sqlalchemy
 aiosqlite
 alembic
 asgi-lifespan
+openai-whisper
 python-multipart
 httpx
 pytest
