@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import BigInteger, String, Enum, DateTime, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Text
 
 from app.models.base import Base
 
@@ -52,7 +53,22 @@ class Recording(Base):
     )
 
     transcript: Mapped["Transcript | None"] = relationship(
-    back_populates="recording",
-    cascade="all, delete-orphan",
-    uselist=False,
-)
+        back_populates="recording",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+    transcription_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    transcription_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    transcription_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
