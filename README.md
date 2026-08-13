@@ -11,56 +11,52 @@ ClearNote AI currently supports:
 * FastAPI backend
 * Next.js frontend
 * Frontend-to-backend connectivity
-* API health checks
 * Audio file uploads
-* Audio MIME-type validation
-* Maximum upload-size validation
-* Local audio file storage
+* Audio MIME-type and file-size validation
+* Local audio storage
 * UUID-based recording identifiers
-* SQLite database persistence
-* Asynchronous SQLAlchemy ORM
-* Alembic database migrations
-* Recording retrieval by ID
-* Paginated recording listing
-* Recording deletion
-* Automatic cleanup of stored audio during deletion
-* Local Whisper installation and command-line verification
-* Transcript database model
-* Timestamped transcript-segment database model
-* Recording-to-transcript relationships
-* Database cascade deletion
-* Automated backend tests
+* SQLite persistence
+* SQLAlchemy async ORM
+* Alembic migrations
+* Recording retrieval, listing, pagination, and deletion
+* Local Whisper transcription
+* Recording transcription status tracking
+* Full transcript persistence
+* Timestamped transcript segment persistence
+* Transcript retrieval API
+* Generated-note database model
+* Structured Pydantic schema for AI-generated notes
+* OpenAI backend configuration
 * Interactive OpenAPI documentation
+* Automated backend tests
 
-The database is now prepared to store Whisper transcription results. The FastAPI transcription service and endpoints will be implemented next.
+The next development step is to connect stored transcripts to the OpenAI API and generate validated structured notes.
 
 ## Current Workflow
 
 ```text
 Upload audio
     ↓
-Validate file type and size
+Validate file
     ↓
-Generate a unique recording ID
+Store audio locally
     ↓
-Store the audio file locally
+Persist recording metadata
     ↓
-Save recording metadata in SQLite
+Run local Whisper transcription
     ↓
-Retrieve, list, or delete recordings
+Store full transcript
+    ↓
+Store timestamped segments
+    ↓
+Generate structured AI notes
+    ↓
+Review and export
 ```
 
-The transcription data model is also ready:
+The application currently implements the workflow through transcript persistence.
 
-```text
-Recording
-    ↓
-Transcript
-    ↓
-Timestamped transcript segments
-```
-
-The next implementation step will connect the stored audio file to local Whisper transcription.
+The generated-notes schema and database structures are ready for the next LLM integration step.
 
 ## Technology Stack
 
@@ -77,6 +73,7 @@ The next implementation step will connect the stored audio file to local Whisper
 * Alembic
 * OpenAI Whisper
 * PyTorch
+* OpenAI API configuration
 * Pytest
 * HTTPX
 
@@ -93,7 +90,7 @@ The next implementation step will connect the stored audio file to local Whisper
 * FFmpeg
 * Docker Desktop
 * FastAPI OpenAPI documentation
-* SQLite command-line tools
+* SQLite CLI
 
 ## Project Structure
 
@@ -103,19 +100,24 @@ clearnote-ai/
 │   ├── app/
 │   │   ├── api/
 │   │   │   └── routes/
-│   │   │       └── recordings.py
+│   │   │       ├── recordings.py
+│   │   │       └── transcriptions.py
 │   │   ├── core/
 │   │   │   ├── config.py
 │   │   │   └── database.py
 │   │   ├── models/
 │   │   │   ├── __init__.py
 │   │   │   ├── base.py
+│   │   │   ├── generated_note.py
 │   │   │   ├── recording.py
 │   │   │   └── transcript.py
 │   │   ├── schemas/
-│   │   │   └── recording.py
+│   │   │   ├── generated_note.py
+│   │   │   ├── recording.py
+│   │   │   └── transcript.py
 │   │   ├── services/
-│   │   │   └── audio_storage.py
+│   │   │   ├── audio_storage.py
+│   │   │   └── transcription.py
 │   │   └── main.py
 │   ├── migrations/
 │   │   ├── versions/
@@ -161,25 +163,19 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Create the backend environment file:
+Create the local backend environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-The default local database configuration is:
-
-```env
-DATABASE_URL=sqlite+aiosqlite:///./clearnote.db
-```
-
-Apply database migrations:
+Apply migrations:
 
 ```bash
 python -m alembic upgrade head
 ```
 
-Start the backend:
+Start FastAPI:
 
 ```bash
 python -m fastapi dev app/main.py
@@ -191,6 +187,26 @@ Backend URLs:
 * API documentation: `http://localhost:8000/docs`
 * Health check: `http://localhost:8000/health`
 
+## Backend Environment Configuration
+
+The local backend uses environment variables such as:
+
+```env
+DATABASE_URL=sqlite+aiosqlite:///./clearnote.db
+
+WHISPER_MODEL_NAME=tiny
+WHISPER_DEVICE=cpu
+
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-mini
+```
+
+The actual `.env` file should contain your real local values.
+
+The `.env.example` file must contain placeholders only.
+
+Never commit a real OpenAI API key.
+
 ## Frontend Setup
 
 Open a second terminal:
@@ -200,7 +216,13 @@ cd frontend
 npm install
 ```
 
-Create `frontend/.env.local`:
+Create:
+
+```text
+frontend/.env.local
+```
+
+with:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
@@ -220,91 +242,79 @@ http://localhost:3000
 
 ## Database Migrations
 
-ClearNote AI uses Alembic to version and apply database schema changes.
+ClearNote AI uses Alembic to version database schema changes.
 
-Apply all available migrations:
+Apply migrations:
 
 ```bash
-cd backend
-source .venv/bin/activate
 python -m alembic upgrade head
 ```
 
-Check the currently applied migration:
+Check the current revision:
 
 ```bash
 python -m alembic current
 ```
 
-Check the latest available migration:
+Check the latest migration revision:
 
 ```bash
 python -m alembic heads
 ```
 
-Both commands should show the same revision when the database is current.
-
-Create a new autogenerated migration after changing SQLAlchemy models:
+Create a migration after modifying SQLAlchemy models:
 
 ```bash
 python -m alembic revision \
   --autogenerate \
-  -m "describe the schema change"
+  -m "describe schema change"
 ```
 
-Review every generated migration before applying it.
+Always review autogenerated migrations before applying them.
 
-## Database
+## Database Tables
 
-ClearNote AI currently uses SQLite for local development.
-
-The database file is:
-
-```text
-backend/clearnote.db
-```
-
-It is excluded from Git.
-
-Current database tables include:
+Current tables include:
 
 ```text
 alembic_version
 recordings
 transcripts
 transcript_segments
+generated_notes
 ```
 
-### Recordings Table
+### Recordings
 
-Each uploaded recording stores:
+Stores:
 
 * Recording ID
 * Original filename
 * Stored filename
-* Content type
+* MIME type
 * File size
 * Processing status
+* Transcription error
+* Transcription start time
+* Transcription completion time
 * Creation timestamp
 
-### Transcripts Table
+### Transcripts
 
-Each transcript stores:
+Stores:
 
 * Transcript ID
 * Related recording ID
-* Full transcript text
+* Complete transcript text
 * Language
 * Whisper model name
 * Audio duration
 * Processing duration
 * Creation timestamp
 
-Each recording can have zero or one transcript.
+### Transcript Segments
 
-### Transcript Segments Table
-
-Each transcript segment stores:
+Stores:
 
 * Segment ID
 * Related transcript ID
@@ -315,106 +325,48 @@ Each transcript segment stores:
 * Average log probability
 * No-speech probability
 
-A transcript can contain multiple timestamped segments.
+### Generated Notes
 
-### Database Relationships
+Stores structured AI-generated analysis for a transcript.
+
+Current fields include:
+
+* Generated note ID
+* Related transcript ID
+* Summary
+* Decisions
+* Action items
+* Key points
+* Follow-up questions
+* LLM model name
+* Prompt version
+* Creation timestamp
+
+Each transcript can have zero or one generated note.
+
+## Data Relationships
 
 ```text
 Recording
     │
     └── Transcript
             │
-            ├── Transcript Segment 0
-            ├── Transcript Segment 1
-            └── Transcript Segment 2
+            ├── Transcript Segment
+            ├── Transcript Segment
+            └── Generated Note
 ```
 
-Deleting a recording also deletes its related transcript and transcript segments.
-
-### Inspect the Database
-
-From the backend directory:
-
-```bash
-sqlite3 clearnote.db
-```
-
-List tables:
-
-```sql
-.tables
-```
-
-Inspect the transcript schema:
-
-```sql
-.schema transcripts
-```
-
-Inspect the segment schema:
-
-```sql
-.schema transcript_segments
-```
-
-View recordings:
-
-```sql
-SELECT
-    id,
-    original_filename,
-    status,
-    created_at
-FROM recordings;
-```
-
-View transcripts:
-
-```sql
-SELECT
-    id,
-    recording_id,
-    language,
-    model_name,
-    duration_seconds,
-    processing_seconds
-FROM transcripts;
-```
-
-View timestamped segments:
-
-```sql
-SELECT
-    transcript_id,
-    segment_index,
-    start_seconds,
-    end_seconds,
-    text
-FROM transcript_segments
-ORDER BY transcript_id, segment_index;
-```
-
-Exit SQLite:
-
-```sql
-.quit
-```
+Generated notes are tied directly to transcripts rather than audio files so the LLM works from the persisted transcription result.
 
 ## Audio Upload
 
-The upload endpoint is:
+Upload endpoint:
 
 ```text
 POST /api/recordings
 ```
 
-The request must use `multipart/form-data` with a field named:
-
-```text
-file
-```
-
-Supported MIME types:
+Supported MIME types include:
 
 * `audio/mpeg`
 * `audio/mp4`
@@ -429,110 +381,85 @@ Maximum upload size:
 25 MB
 ```
 
-Uploaded audio files are stored in:
+Uploaded audio is stored in:
 
 ```text
 backend/storage/audio/
 ```
 
-Uploaded media is excluded from Git.
-
-### Upload With curl
-
-```bash
-curl -X POST \
-  "http://localhost:8000/api/recordings" \
-  -H "accept: application/json" \
-  -F "file=@/absolute/path/to/sample.m4a;type=audio/mp4"
-```
-
 ## Recording Management API
 
-### List Recordings
+Current recording endpoints:
+
+| Method   | Endpoint                         | Description                       |
+| -------- | -------------------------------- | --------------------------------- |
+| `POST`   | `/api/recordings`                | Upload and persist audio          |
+| `GET`    | `/api/recordings`                | List recordings                   |
+| `GET`    | `/api/recordings/{recording_id}` | Retrieve one recording            |
+| `DELETE` | `/api/recordings/{recording_id}` | Delete recording and stored audio |
+
+## Whisper Transcription
+
+Transcription endpoint:
 
 ```text
-GET /api/recordings
+POST /api/recordings/{recording_id}/transcribe
 ```
 
-Example:
-
-```bash
-curl \
-  "http://localhost:8000/api/recordings?limit=20&offset=0"
-```
-
-### Retrieve a Recording
+The workflow is:
 
 ```text
-GET /api/recordings/{recording_id}
+Recording status = uploaded
+    ↓
+Recording status = transcribing
+    ↓
+Whisper processes audio
+    ↓
+Transcript is persisted
+    ↓
+Segments are persisted
+    ↓
+Recording status = transcribed
 ```
 
-Example:
-
-```bash
-curl \
-  "http://localhost:8000/api/recordings/REPLACE_WITH_RECORDING_ID"
-```
-
-### Delete a Recording
+If transcription fails:
 
 ```text
-DELETE /api/recordings/{recording_id}
+status = failed
 ```
 
-Example:
+and the error is stored on the recording.
 
-```bash
-curl -X DELETE \
-  "http://localhost:8000/api/recordings/REPLACE_WITH_RECORDING_ID"
+### Retrieve Transcript
+
+```text
+GET /api/recordings/{recording_id}/transcript
 ```
 
-Deleting a recording removes:
+The response includes:
 
-* The recording database row
-* The locally stored audio file
-* Its related transcript
-* Its related transcript segments
+* Full transcript text
+* Language
+* Whisper model
+* Processing duration
+* Timestamped segments
 
-## Current API Endpoints
+## Local Whisper Configuration
 
-| Method   | Endpoint                         | Description                             |
-| -------- | -------------------------------- | --------------------------------------- |
-| `GET`    | `/health`                        | Returns API health information          |
-| `POST`   | `/api/recordings`                | Uploads and persists an audio recording |
-| `GET`    | `/api/recordings`                | Returns a paginated recording list      |
-| `GET`    | `/api/recordings/{recording_id}` | Retrieves recording metadata            |
-| `DELETE` | `/api/recordings/{recording_id}` | Deletes a recording and its audio file  |
+Current development configuration:
 
-The transcription endpoints will be added next.
-
-## Local Whisper Setup
-
-Whisper is installed through:
-
-```bash
-python -m pip install -U openai-whisper
+```env
+WHISPER_MODEL_NAME=tiny
+WHISPER_DEVICE=cpu
 ```
 
-Confirm installation:
+Verify Whisper:
 
 ```bash
 python -c "import whisper; print('Whisper imported successfully')"
 ```
 
-Confirm the CLI:
-
-```bash
-whisper --help
-```
-
-FFmpeg must also be available:
-
-```bash
-ffmpeg -version
-```
-
-### Test Whisper Locally
+You can also test transcription directly:
 
 ```bash
 whisper \
@@ -543,19 +470,77 @@ whisper \
   --output_dir /tmp/clearnote-whisper-test
 ```
 
-Read the generated transcript:
+## Structured AI Notes
 
-```bash
-cat /tmp/clearnote-whisper-test/*.txt
+The project now contains a Pydantic schema defining the expected LLM output.
+
+The target structured result contains:
+
+```json
+{
+  "summary": "Concise conversation summary",
+  "decisions": [],
+  "action_items": [],
+  "key_points": [],
+  "follow_up_questions": []
+}
 ```
 
-Inspect timestamped output:
+An action item can contain:
 
-```bash
-cat /tmp/clearnote-whisper-test/*.srt
+```json
+{
+  "task": "Complete deployment",
+  "owner": "Vijay",
+  "due_date": null
+}
 ```
 
-The `tiny` model is currently used for fast local development. Model quality and performance comparisons will be added later.
+The LLM must return information supported by the transcript rather than inventing missing information.
+
+The next phase will:
+
+```text
+Retrieve transcript
+    ↓
+Send it to the OpenAI API
+    ↓
+Request schema-constrained output
+    ↓
+Validate with Pydantic
+    ↓
+Persist GeneratedNote
+    ↓
+Return structured JSON
+```
+
+## OpenAI Configuration
+
+The backend configuration supports:
+
+```env
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-mini
+```
+
+Check that configuration loads without printing the secret:
+
+```bash
+python -c "
+from app.core.config import settings
+print('API key configured:', bool(settings.openai_api_key))
+print('Model:', settings.openai_model)
+"
+```
+
+Expected:
+
+```text
+API key configured: True
+Model: gpt-5-mini
+```
+
+Never expose the OpenAI API key through frontend environment variables.
 
 ## Run Tests
 
@@ -566,19 +551,18 @@ source .venv/bin/activate
 pytest -v
 ```
 
-Current tests cover:
+Current tests cover the recording and persistence workflow.
 
-* Health-check response
-* Successful audio upload
-* Recording persistence
-* Recording retrieval
-* Paginated recording listing
-* Recording deletion
-* Local file cleanup
-* Unknown recording handling
-* Unsupported file rejection
+Additional tests will be added for:
 
-Whisper transcription tests will use mocked model results so the automated test suite does not repeatedly load the real model.
+* Whisper result persistence
+* Transcription failure handling
+* Generated note parsing
+* LLM failures
+* Structured-output validation
+* Duplicate note generation
+
+LLM tests will use mocks rather than making paid API requests.
 
 ## Development Roadmap
 
@@ -587,44 +571,44 @@ Whisper transcription tests will use mocked model results so the automated test 
 * Project foundation
 * FastAPI backend
 * Next.js frontend
-* Frontend-to-backend connection
-* Audio upload API
+* Audio upload
 * File validation
 * Local audio storage
-* SQLite database setup
+* SQLite persistence
 * SQLAlchemy async integration
 * Alembic migrations
-* Recording persistence
-* Recording retrieval
-* Recording listing and pagination
+* Recording management APIs
 * Recording deletion and file cleanup
-* Local Whisper installation
-* Whisper command-line verification
-* Transcript database model
-* Timestamped transcript-segment model
-* Transcript relationships and cascade deletion
-* Transcript database migration
+* Local Whisper integration
+* Transcription status tracking
+* Full transcript persistence
+* Timestamped transcript segments
+* Transcript retrieval API
+* Generated-note database model
+* Generated-note Alembic migration
+* Structured generated-note Pydantic schema
+* OpenAI backend configuration
 
 ### Next
 
-* Python Whisper transcription service
-* Whisper model caching
-* Transcription status updates
-* Transcription error handling
-* Transcript persistence
-* Timestamped segment persistence
-* Transcription API endpoint
-* Transcript retrieval endpoint
-* Mocked transcription tests
-* Frontend upload interface
-* Frontend transcription-status display
+* OpenAI Python SDK integration
+* Schema-constrained structured output
+* Prompt versioning
+* AI note generation service
+* Generated-note persistence
+* Generate-notes API endpoint
+* Generated-note retrieval endpoint
+* LLM failure handling
+* Mocked LLM tests
+* Frontend audio upload workflow
+* Frontend transcription status
 * Transcript viewer
-* Structured AI note generation
-* Human review and editing
+* Generated-note viewer
+* Human editing and approval
 * JSON and Markdown exports
 * Docker Compose
 * PostgreSQL
-* Background job processing
+* Background processing
 * AWS deployment
 * Terraform infrastructure
 
@@ -632,22 +616,25 @@ Whisper transcription tests will use mocked model results so the automated test 
 
 This project is currently intended for development and portfolio demonstration.
 
-Do not upload:
+Do not upload real:
 
 * Protected health information
 * Personally identifiable information
 * Confidential company recordings
 * Sensitive legal or financial conversations
 
-Use synthetic, public, or personally created test audio only.
+Use synthetic, public, or personally created test audio.
 
-Frontend variables prefixed with `NEXT_PUBLIC_` are visible to browser users and must never contain secrets.
+Never commit:
 
-API keys, database passwords, AWS credentials, and signing secrets must remain in backend environment variables.
+* OpenAI API keys
+* AWS credentials
+* Database credentials
+* JWT signing secrets
 
 ## Local Files Excluded From Git
 
-The following files should not be committed:
+Do not commit:
 
 ```text
 backend/.env
@@ -659,7 +646,7 @@ frontend/node_modules/
 frontend/.next/
 ```
 
-The audio-storage placeholder remains tracked:
+The following placeholder may remain tracked:
 
 ```text
 backend/storage/audio/.gitkeep
