@@ -18,6 +18,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.recording import Recording
+    from app.models.generated_note import GeneratedNote
 
 
 class Transcript(Base):
@@ -81,6 +82,12 @@ class Transcript(Base):
         back_populates="transcript",
         cascade="all, delete-orphan",
         order_by="TranscriptSegment.segment_index",
+    )
+
+    generated_note: Mapped["GeneratedNote | None"] = relationship(
+        back_populates="transcript",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
 
