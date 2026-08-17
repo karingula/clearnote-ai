@@ -28,4 +28,4 @@ class GeneratedNoteResponse(BaseModel):
     follow_up_questions: list[str] = Field(default_factory=list, description="A list of follow-up questions for further discussion.")
     model_name: str = Field(..., description="The name of the model used to generate the note.")
     prompt_version: str = Field(..., description="The version of the prompt used for generating the note.")
-    create_at: datetime = Field(..., description="The timestamp when the generated note was created.")
+    created_at: datetime = Field(..., description="The timestamp when the generated note was created.")

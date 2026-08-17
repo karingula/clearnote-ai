@@ -8,6 +8,8 @@ from app.api.routes.recordings import router as recordings_router
 from app.api.routes.transcriptions import (
     router as transcriptions_router,
 )
+from app.api.routes.notes import router as notes_router
+
 from app.core.config import settings
 from app.core.database import engine
 
@@ -43,6 +45,7 @@ app.include_router(recordings_router)
 app.include_router(transcriptions_router)
 app.include_router(recordings_router)
 app.include_router(transcriptions_router)
+app.include_router(notes_router)
 
 
 @app.get("/health", tags=["System"])
