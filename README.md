@@ -994,4 +994,13 @@ backend/storage/audio/.gitkeep
 
 ## License
 
-A license has not yet been selected.
+Copyright © 2026 Vijay. All Rights Reserved.
+
+This repository is publicly available for portfolio and demonstration
+purposes only.
+
+No permission is granted to copy, modify, distribute, sublicense,
+commercialize, or create derivative works from this code without prior
+written permission.
+
+See the `LICENSE` file for details.
