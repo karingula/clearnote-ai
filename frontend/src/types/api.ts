@@ -11,6 +11,10 @@ export type Recording = {
   created_at: string;
 };
 
+export type RecordingListResponse = {
+  items: Recording[];
+};
+
 export type TranscriptSegment = {
   id: string;
   segment_index: number;

@@ -1,9 +1,10 @@
 "use client";
 
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 
 import {
   generateNotes,
+  listRecordings,
   transcribeRecording,
   uploadRecording,
 } from "@/lib/api";
@@ -43,6 +44,15 @@ export default function Home() {
 
   const [error, setError] =
     useState<string | null>(null);
+  
+  const [recordings, setRecordings] = 
+    useState<Recording[]>([]);
+  
+  const [recordingsLoading, setRecordingsLoading] =
+    useState(true);
+  
+  const [recordingsError, setRecordingsError] =
+    useState<string | null>(null);
 
 
   function handleFileChange(
@@ -73,8 +83,13 @@ export default function Home() {
 
       const uploadedRecording =
         await uploadRecording(selectedFile);
-
+      
       setRecording(uploadedRecording);
+      setRecordings((current) => [
+        uploadedRecording,
+        ...current,
+      ]);
+      
       setStep("uploaded");
     } catch (err) {
       setError(
@@ -101,14 +116,24 @@ export default function Home() {
         await transcribeRecording(recording.id);
 
       setTranscript(result);
-
       setRecording((current) =>
         current
           ? {
-              ...current,
+            ...current,
+            status: "transcribed",
+          }
+        : current
+      );
+
+      setRecordings((current) =>
+        current.map((item) =>
+          item.id === recording.id
+            ? {
+              ...item,
               status: "transcribed",
-            }
-          : current
+              }
+            : item
+        )
       );
 
       setStep("transcribed");
@@ -149,6 +174,30 @@ export default function Home() {
     }
   }
 
+  useEffect(() => {
+  async function loadRecordings() {
+    try {
+      setRecordingsLoading(true);
+      setRecordingsError(null);
+
+      const result = await listRecordings();
+      console.log("listRecordings result:", result);
+      console.log("is array:", Array.isArray(result));
+
+      setRecordings(result);
+    } catch (err) {
+      setRecordingsError(
+        err instanceof Error
+          ? err.message
+          : "Could not load recordings."
+      );
+    } finally {
+      setRecordingsLoading(false);
+    }
+  }
+
+  loadRecordings();
+}, []);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-indigo-50/70 via-slate-50 to-white">
@@ -161,6 +210,65 @@ export default function Home() {
   <h1 className="text-4xl font-bold tracking-tight text-slate-950">
     ClearNote <span className="text-indigo-600">AI</span>
   </h1>
+
+  <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
+  <div className="flex items-center justify-between">
+    <div>
+      <h2 className="text-xl font-semibold text-slate-950">
+        Recent Recordings
+      </h2>
+
+      <p className="mt-1 text-sm text-slate-500">
+        Your previously uploaded recordings.
+      </p>
+    </div>
+  </div>
+
+  {recordingsLoading && (
+    <p className="mt-6 text-sm text-slate-500">
+      Loading recordings...
+    </p>
+  )}
+
+  {recordingsError && (
+    <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+      {recordingsError}
+    </div>
+  )}
+
+  {!recordingsLoading &&
+    !recordingsError &&
+    recordings.length === 0 && (
+      <div className="mt-6 rounded-xl bg-slate-50 p-6 text-center">
+        <p className="text-sm text-slate-500">
+          No recordings yet.
+        </p>
+      </div>
+    )}
+
+  {!recordingsLoading && recordings.length > 0 && (
+    <div className="mt-6 divide-y divide-slate-100">
+      {recordings.map((item) => (
+        <div
+          key={item.id}
+          className="flex items-center justify-between py-4"
+        >
+          <div>
+            <p className="font-medium text-slate-900">
+              {item.original_filename}
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              {formatCreatedAt(item.created_at)}
+            </p>
+          </div>
+
+          <RecordingStatusBadge status={item.status} />
+        </div>
+      ))}
+    </div>
+  )}
+</section>
 
   <p className="mt-4 whitespace-nowrap text-lg text-slate-600">
     Upload a recording, transcribe it locally with Whisper, and generate structured AI notes.
@@ -386,6 +494,38 @@ function formatSeconds(seconds: number): string {
   return `${minutes}:${remainingSeconds
     .toString()
     .padStart(2, "0")}`;
+}
+
+function formatCreatedAt(value: string): string {
+  return new Date(value).toLocaleString();
+}
+
+function RecordingStatusBadge({
+  status,
+}: {
+  status: Recording["status"];
+}) {
+  const styles = {
+    uploaded:
+      "bg-slate-100 text-slate-700",
+
+    transcribing:
+      "bg-indigo-50 text-indigo-700",
+
+    transcribed:
+      "bg-emerald-50 text-emerald-700",
+
+    failed:
+      "bg-red-50 text-red-700",
+  };
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${styles[status]}`}
+    >
+      {status}
+    </span>
+  );
 }
 
 

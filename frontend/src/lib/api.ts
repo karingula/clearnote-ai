@@ -1,6 +1,7 @@
 import type {
   GeneratedNote,
   Recording,
+  RecordingListResponse,
   Transcript,
 } from "@/types/api";
 
@@ -79,4 +80,18 @@ export async function generateNotes(
   }
 
   return response.json();
+}
+
+export async function listRecordings(): Promise<Recording[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/recordings?limit=50&offset=0`
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  const data: RecordingListResponse = await response.json();
+
+  return data.items;
 }
