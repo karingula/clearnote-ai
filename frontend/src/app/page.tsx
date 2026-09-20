@@ -2,6 +2,7 @@
 
 import { ChangeEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import RecordingHistory from "@/components/RecordingHistory";
 
 import {
   generateNotes,
@@ -398,164 +399,13 @@ async function restoreRecording() {
           </p>
         </header>
 
-
-        {/* Recent Recordings */}
-
-        <section className="mb-8 rounded-2xl border border-slate-200/80 bg-white/90 p-8 shadow-sm backdrop-blur">
-
-          <div className="flex items-start justify-between gap-6">
-
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-indigo-600">
-                Workspace
-              </p>
-
-              <h2 className="mt-1 text-2xl font-bold text-slate-950">
-                Recent Recordings
-              </h2>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Reopen previous recordings or continue where you left off.
-              </p>
-            </div>
-
-            <div className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
-              {recordings.length}{" "}
-              recording
-              {recordings.length === 1
-                ? ""
-                : "s"}
-            </div>
-
-          </div>
-
-
-          {recordingsLoading && (
-            <p className="mt-6 text-sm text-slate-500">
-              Loading recordings...
-            </p>
-          )}
-
-
-          {recordingsError && (
-            <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-              {recordingsError}
-            </div>
-          )}
-
-
-          {!recordingsLoading &&
-            !recordingsError &&
-            recordings.length === 0 && (
-              <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-
-                <div className="text-3xl">
-                  🎙️
-                </div>
-
-                <h3 className="mt-3 font-semibold text-slate-900">
-                  No recordings yet
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  Upload your first audio file to create a transcript and AI notes.
-                </p>
-
-              </div>
-            )}
-
-
-          {!recordingsLoading &&
-            !recordingsError &&
-            recordings.length > 0 && (
-
-              <div className="mt-6 grid gap-4">
-
-                {recordings.map((item) => {
-
-                  const isSelected =
-                    selectedRecordingId ===
-                    item.id;
-
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() =>
-                        handleSelectRecording(
-                          item
-                        )
-                      }
-                      className={`group w-full rounded-2xl border p-5 text-left transition ${
-                        isSelected
-                          ? "border-indigo-300 bg-indigo-50 shadow-sm"
-                          : "border-slate-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm"
-                      }`}
-                    >
-
-                      <div className="flex items-start justify-between gap-6">
-
-                        <div className="min-w-0 flex-1">
-
-                          <div className="flex items-center gap-3">
-
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-xl">
-                              🎙️
-                            </div>
-
-
-                            <div className="min-w-0">
-
-                              <p className="truncate font-semibold text-slate-900">
-                                {
-                                  item.original_filename
-                                }
-                              </p>
-
-                              <p className="mt-1 text-sm text-slate-500">
-                                {formatCreatedAt(
-                                  item.created_at
-                                )}
-                              </p>
-
-                            </div>
-
-                          </div>
-
-
-                          <div className="mt-4 flex flex-wrap items-center gap-3">
-
-                            <RecordingStatusBadge
-                              status={
-                                item.status
-                              }
-                            />
-
-                            <span className="text-sm text-slate-500">
-                              {getRecordingNextAction(
-                                item.status
-                              )}
-                            </span>
-
-                          </div>
-
-                        </div>
-
-
-                        <div className="pt-2 text-xl text-slate-400 transition group-hover:translate-x-1 group-hover:text-indigo-600">
-                          →
-                        </div>
-
-                      </div>
-
-                    </button>
-                  );
-                })}
-
-              </div>
-            )}
-
-        </section>
+        <RecordingHistory
+          recordings={recordings}
+          selectedRecordingId={selectedRecordingId}
+          loading={recordingsLoading}
+          error={recordingsError}
+          onSelectRecording={handleSelectRecording}
+        />
 
 
         {openingRecording && (
@@ -917,8 +767,6 @@ async function restoreRecording() {
   );
 }
 
-
-
 function formatSeconds(
   seconds: number
 ): string {
@@ -932,71 +780,6 @@ function formatSeconds(
     .toString()
     .padStart(2, "0")}`;
 }
-
-
-
-function formatCreatedAt(
-  value: string
-): string {
-  return new Date(
-    value
-  ).toLocaleString();
-}
-
-
-
-function RecordingStatusBadge({
-  status,
-}: {
-  status: Recording["status"];
-}) {
-  const styles = {
-    uploaded:
-      "bg-slate-100 text-slate-700",
-
-    transcribing:
-      "bg-indigo-50 text-indigo-700",
-
-    transcribed:
-      "bg-emerald-50 text-emerald-700",
-
-    failed:
-      "bg-red-50 text-red-700",
-  };
-
-  return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${styles[status]}`}
-    >
-      {status}
-    </span>
-  );
-}
-
-
-
-function getRecordingNextAction(
-  status: Recording["status"]
-): string {
-  switch (status) {
-    case "uploaded":
-      return "Ready to transcribe";
-
-    case "transcribing":
-      return "Transcription in progress";
-
-    case "transcribed":
-      return "Open transcript and notes";
-
-    case "failed":
-      return "Needs attention";
-
-    default:
-      return "";
-  }
-}
-
-
 
 function NoteSection({
   title,
