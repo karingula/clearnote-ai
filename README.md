@@ -1,77 +1,319 @@
 # ClearNote AI
 
-ClearNote AI is an end-to-end audio transcription and structured note-generation application. Users can upload an audio recording, transcribe it locally with OpenAI Whisper, generate structured notes with an OpenAI language model, and view previously uploaded recordings from a persistent dashboard.
+**Privacy-Conscious Conversation Intelligence**
 
-The project is being built as a production-oriented AI engineering portfolio project, with clear boundaries between file storage, transcription, note generation, persistence, API delivery, and the user interface.
+ClearNote AI is an AI-powered application that transforms recorded conversations into searchable transcripts and structured notes containing summaries, decisions, action items, key points, and follow-up questions.
+
+The project is being developed incrementally as a production-oriented AI engineering portfolio project.
+
+---
 
 ## Current Status
 
-| Area | Status |
-| --- | --- |
-| Recording upload and storage | Complete |
-| Recording list, retrieval, and deletion | Complete |
-| Local Whisper transcription | Complete |
-| Transcript persistence | Complete |
-| Structured AI note generation | Complete |
-| Generated-note persistence | Complete |
-| Prompt version tracking | Complete |
-| Next.js upload and processing workflow | Complete |
-| Recording history dashboard | Complete |
-| Reopen saved recordings from history | Next |
-| Document ingestion and RAG | Planned |
+The **backend MVP is complete** and the **frontend MVP is functional and persistent across browser refreshes**.
 
-## Application Workflow
+ClearNote AI currently supports:
 
-1. A user selects a supported audio file in the frontend.
-2. The frontend uploads the file to the FastAPI backend.
-3. The backend validates the file, stores it locally, and creates a recording record in SQLite.
-4. The user starts transcription.
-5. Whisper processes the stored audio locally and the transcript is saved in the database.
-6. The user requests structured notes.
-7. The transcript is sent to the configured OpenAI model.
-8. The generated notes, model name, and prompt version are saved.
-9. The frontend displays the transcript and structured notes.
-10. The recording appears in the history dashboard with its current processing status.
+- Audio file upload
+- Audio MIME-type and file-size validation
+- Local audio file storage
+- UUID-based recording identifiers
+- SQLite database persistence
+- SQLAlchemy async ORM
+- Alembic database migrations
+- Recording retrieval, listing, pagination, and deletion
+- Local Whisper speech-to-text transcription
+- Whisper model caching
+- Transcription status tracking
+- Full transcript persistence
+- Timestamped transcript segments
+- Transcript retrieval API
+- OpenAI LLM integration
+- Schema-constrained structured note generation
+- Pydantic validation of LLM responses
+- Generated-note persistence
+- Prompt version tracking
+- LLM model tracking
+- Duplicate generation protection
+- Development mock-AI mode
+- FastAPI error handling
+- Automated backend tests
+- Next.js frontend
+- Recording history workspace
+- Historical recording reopening
+- Persisted recording selection through the URL
+- Automatic transcript and note restoration after refresh
+- Loading and error states
+- Indigo + slate visual theme
+- Interactive FastAPI OpenAPI documentation
 
-## Architecture
+The next development phase focuses on improving the user experience, component structure, human review/editing, and export capabilities.
 
-```mermaid
-flowchart TD
-    UI[Next.js Frontend] --> API[FastAPI REST API]
-    API --> Storage[Local Audio Storage]
-    API --> DB[(SQLite Database)]
-    API --> Whisper[Local Whisper Inference]
-    API --> OpenAI[OpenAI Notes Generation]
-    Whisper --> DB
-    OpenAI --> DB
+---
+
+# What ClearNote AI Does
+
+The complete application workflow is:
+
+```text
+Audio Recording
+      ↓
+Next.js Frontend
+      ↓
+Upload through FastAPI
+      ↓
+Validate audio
+      ↓
+Store audio locally
+      ↓
+Persist recording metadata
+      ↓
+Run local Whisper
+      ↓
+Generate transcript
+      ↓
+Persist full transcript
+      ↓
+Persist timestamped segments
+      ↓
+Generate structured AI notes
+      ↓
+Validate structured output
+      ↓
+Persist generated notes
+      ↓
+Display transcript + notes
+      ↓
+Reopen them later without reprocessing
 ```
 
-The backend separates the main responsibilities into API routes, database models, request and response schemas, audio storage, transcription, and AI note-generation services. This keeps the current MVP simple while allowing individual components to be replaced later with object storage, background workers, PostgreSQL, or other production services.
+The goal is not simply to transcribe audio.
 
-## Technology Stack
+ClearNote AI turns an unstructured conversation into structured, reviewable information.
 
-### Backend
+---
+
+# Example
+
+Given a conversation such as:
+
+```text
+Vijay: The API testing is complete.
+Sarah: Great. Let's deploy the new version on Friday.
+Vijay: I still need to finish the database migration.
+Sarah: Please complete that before deployment.
+```
+
+ClearNote AI can generate structured output such as:
+
+```json
+{
+  "summary": "The team discussed deployment readiness and the remaining database migration.",
+  "decisions": [
+    "Deploy the new version on Friday."
+  ],
+  "action_items": [
+    {
+      "task": "Complete the database migration before deployment.",
+      "owner": "Vijay",
+      "due_date": null
+    }
+  ],
+  "key_points": [
+    "API testing is complete.",
+    "The database migration remains outstanding."
+  ],
+  "follow_up_questions": []
+}
+```
+
+The LLM is instructed to use only information supported by the transcript and avoid inventing owners, dates, decisions, deadlines, or facts.
+
+---
+
+# Architecture
+
+```text
+┌───────────────────────────────┐
+│        Next.js Frontend       │
+│                               │
+│ Upload                        │
+│ Recording workspace           │
+│ Recording history             │
+│ Transcript viewer             │
+│ AI notes viewer               │
+│ URL-persisted selection       │
+└──────────────┬────────────────┘
+               │
+               │ HTTP / JSON
+               ▼
+┌───────────────────────────────┐
+│        FastAPI Backend        │
+│                               │
+│ Recording API                 │
+│ Transcription API             │
+│ AI Notes API                  │
+└───────┬───────────────┬───────┘
+        │               │
+        ▼               ▼
+┌───────────────┐  ┌──────────────────┐
+│    SQLite     │  │  Local Storage   │
+│               │  │                  │
+│ Recordings    │  │  Audio files     │
+│ Transcripts   │  └─────────┬────────┘
+│ Segments      │            │
+│ AI Notes      │            ▼
+└───────────────┘      ┌──────────────┐
+                       │   Whisper    │
+                       │              │
+                       │ Audio → Text │
+                       └──────┬───────┘
+                              │
+                              ▼
+                       ┌──────────────┐
+                       │ AI Notes     │
+                       │              │
+                       │ OpenAI API   │
+                       │     or       │
+                       │ Mock Mode    │
+                       └──────────────┘
+```
+
+---
+
+# AI Pipeline
+
+ClearNote AI intentionally separates **speech recognition** from **language understanding**.
+
+## Stage 1 — Speech Recognition
+
+Whisper performs:
+
+```text
+Audio → Transcript
+```
+
+Whisper runs locally on the backend machine.
+
+It produces:
+
+- Full transcript text
+- Detected language
+- Timestamped segments
+- Segment-level confidence metadata
+- Audio duration information
+
+## Stage 2 — Language Understanding
+
+The LLM performs:
+
+```text
+Transcript → Structured Notes
+```
+
+The AI extracts:
+
+- Summary
+- Decisions
+- Action items
+- Key points
+- Follow-up questions
+
+This separation allows each AI stage to be tested, debugged, improved, and eventually replaced independently.
+
+---
+
+# Why Local Whisper?
+
+ClearNote AI currently uses **OpenAI Whisper locally** for speech-to-text.
+
+The audio is not sent to an external transcription API.
+
+Conceptually:
+
+```text
+Uploaded Audio
+      ↓
+Local File
+      ↓
+Whisper Model
+      ↓
+Transcript
+```
+
+Whisper is currently configured with a small model suitable for development:
+
+```env
+WHISPER_MODEL_NAME=tiny
+WHISPER_DEVICE=cpu
+```
+
+Larger Whisper models can be used later for improved transcription accuracy.
+
+---
+
+# Whisper Model Caching
+
+Loading a machine-learning model for every request would be inefficient.
+
+The Whisper model is therefore cached after its first load.
+
+```text
+First transcription
+      ↓
+Load Whisper
+      ↓
+Cache model
+      ↓
+Transcribe
+
+Future transcription
+      ↓
+Reuse cached model
+```
+
+This avoids repeatedly loading the same model into memory.
+
+---
+
+# Technology Stack
+
+## Backend
 
 - Python 3.11
 - FastAPI
-- SQLAlchemy
-- SQLite with `aiosqlite`
-- Alembic database migrations
-- Pydantic settings
+- Pydantic
+- Pydantic Settings
+- SQLAlchemy 2
+- SQLAlchemy AsyncIO
+- SQLite
+- aiosqlite
+- Alembic
 - OpenAI Whisper
-- FFmpeg
-- OpenAI API
+- PyTorch
+- OpenAI Python SDK
 - Pytest
+- HTTPX
 
-### Frontend
+## Frontend
 
 - Next.js
 - React
 - TypeScript
 - Tailwind CSS
-- Indigo and slate visual theme
 
-## Project Structure
+## Development
+
+- Git
+- GitHub
+- FFmpeg
+- Docker Desktop
+- SQLite CLI
+- FastAPI OpenAPI documentation
+
+---
+
+# Project Structure
 
 ```text
 clearnote-ai/
@@ -82,196 +324,218 @@ clearnote-ai/
 │   │   │       ├── notes.py
 │   │   │       ├── recordings.py
 │   │   │       └── transcriptions.py
+│   │   │
 │   │   ├── core/
 │   │   │   ├── config.py
 │   │   │   └── database.py
+│   │   │
 │   │   ├── models/
+│   │   │   ├── __init__.py
 │   │   │   ├── base.py
 │   │   │   ├── generated_note.py
 │   │   │   ├── recording.py
 │   │   │   └── transcript.py
+│   │   │
 │   │   ├── schemas/
 │   │   │   ├── generated_note.py
 │   │   │   ├── recording.py
 │   │   │   └── transcript.py
+│   │   │
 │   │   ├── services/
 │   │   │   ├── ai_notes.py
 │   │   │   ├── audio_storage.py
 │   │   │   ├── generated_notes.py
 │   │   │   └── transcription.py
+│   │   │
 │   │   └── main.py
+│   │
 │   ├── migrations/
+│   │   └── versions/
+│   │
+│   ├── storage/
+│   │   └── audio/
+│   │       └── .gitkeep
+│   │
 │   ├── tests/
+│   │
 │   ├── .env.example
+│   ├── alembic.ini
 │   └── requirements.txt
+│
 ├── frontend/
 │   ├── src/
-│   │   └── app/
-│   │       └── page.tsx
-│   ├── public/
-│   ├── .env.local.example
-│   └── package.json
+│   │   ├── app/
+│   │   │   └── page.tsx
+│   │   │
+│   │   ├── lib/
+│   │   │   └── api.ts
+│   │   │
+│   │   └── types/
+│   │       └── api.ts
+│   │
+│   └── .env.local
+│
+├── docs/
+├── evals/
+├── infrastructure/
+├── LICENSE
 ├── .gitignore
 └── README.md
 ```
 
-## Prerequisites
+---
 
-Install the following before running the application:
+# Database Design
 
-- Python 3.11
-- Node.js and npm
-- FFmpeg
-- An OpenAI API key for structured note generation
+The current application uses four primary database tables:
 
-Verify the installations:
-
-```bash
-python3.11 --version
-node --version
-npm --version
-ffmpeg -version
+```text
+recordings
+transcripts
+transcript_segments
+generated_notes
 ```
 
-On macOS, FFmpeg can be installed with Homebrew:
+Relationships:
 
-```bash
-brew install ffmpeg
+```text
+Recording
+    │
+    └── Transcript
+            │
+            ├── Transcript Segment
+            ├── Transcript Segment
+            ├── Transcript Segment
+            │
+            └── Generated Note
 ```
 
-On Ubuntu or Debian:
+---
 
-```bash
-sudo apt update
-sudo apt install ffmpeg
-```
+## Recordings
 
-## Backend Setup
+Stores information about uploaded audio:
 
-From the project root:
+- Recording ID
+- Original filename
+- Stored filename
+- MIME type
+- File size
+- Processing status
+- Transcription error
+- Transcription start time
+- Transcription completion time
+- Creation timestamp
 
-```bash
-cd backend
-python3.11 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-cp .env.example .env
-```
+---
 
-On Windows PowerShell, activate the virtual environment with:
+## Transcripts
 
-```powershell
-.venv\Scripts\Activate.ps1
-```
+Stores transcription results:
 
-Update `backend/.env` with your local configuration:
-
-```env
-DATABASE_URL=sqlite+aiosqlite:///./clearnote.db
-WHISPER_MODEL_NAME=tiny
-WHISPER_DEVICE=cpu
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-5-mini
-```
-
-Apply the database migrations:
-
-```bash
-python -m alembic upgrade head
-```
-
-Start the backend development server:
-
-```bash
-python -m fastapi dev app/main.py
-```
-
-The backend will be available at:
-
-- API: `http://localhost:8000`
-- Interactive API documentation: `http://localhost:8000/docs`
-- Alternative API documentation: `http://localhost:8000/redoc`
-
-## Frontend Setup
-
-Open a second terminal from the project root:
-
-```bash
-cd frontend
-npm install
-cp .env.local.example .env.local
-```
-
-Set the backend URL in `frontend/.env.local`:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-```
-
-Start the frontend development server:
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000` in your browser.
-
-To create a production frontend build:
-
-```bash
-npm run build
-npm start
-```
-
-## Database Design
-
-ClearNote AI currently uses SQLite for local development and SQLAlchemy for persistence.
-
-### `recordings`
-
-Stores the uploaded recording's UUID, original filename, stored filename or path, content type, file size, processing status, and timestamps.
-
-### `transcripts`
-
-Stores one transcript per recording. Important data includes:
-
-- UUID primary key
-- Unique `recording_id` foreign key
-- Transcript text
+- Transcript ID
+- Recording ID
+- Full transcript text
 - Detected language
 - Whisper model name
 - Audio duration
 - Processing duration
 - Creation timestamp
 
-Deleting a recording also deletes its transcript through the configured cascade relationship.
+---
 
-### `transcript_segments`
+## Transcript Segments
 
-Stores timestamped Whisper segments associated with a transcript, including segment order, start and end times, text, average log probability, and no-speech probability.
+Stores timestamped sections of the transcript:
 
-### `generated_notes`
+- Segment ID
+- Transcript ID
+- Segment index
+- Start time
+- End time
+- Segment text
+- Average log probability
+- No-speech probability
 
-Stores one generated note for a transcript. The persisted data includes the structured note content, OpenAI model name, prompt version, and creation timestamp. Structured list fields are serialized for SQLite storage and converted back into API response objects.
+---
 
-## API Endpoints
+## Generated Notes
+
+Stores structured AI results:
+
+- Generated-note ID
+- Transcript ID
+- Summary
+- Decisions
+- Action items
+- Key points
+- Follow-up questions
+- AI model name
+- Prompt version
+- Creation timestamp
+
+---
+
+# Audio Upload
+
+Endpoint:
+
+```text
+POST /api/recordings
+```
+
+The backend:
+
+1. Receives the uploaded audio.
+2. Validates the MIME type.
+3. Validates the file size.
+4. Generates a UUID.
+5. Stores the audio locally.
+6. Persists metadata in the database.
+
+Supported MIME types include:
+
+```text
+audio/mpeg
+audio/mp4
+audio/x-m4a
+audio/wav
+audio/x-wav
+audio/webm
+```
+
+Maximum upload size:
+
+```text
+25 MB
+```
+
+Uploaded audio is stored under:
+
+```text
+backend/storage/audio/
+```
+
+---
+
+# Recording Management
+
+Current recording endpoints:
 
 | Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/health` | Verify that the API is running |
-| `POST` | `/api/recordings` | Upload and create a recording |
-| `GET` | `/api/recordings` | List saved recordings |
-| `GET` | `/api/recordings/{recording_id}` | Retrieve one recording |
-| `DELETE` | `/api/recordings/{recording_id}` | Delete a recording and related data |
-| `POST` | `/api/recordings/{recording_id}/transcribe` | Transcribe a saved recording |
-| `GET` | `/api/recordings/{recording_id}/transcript` | Retrieve the saved transcript |
-| `POST` | `/api/recordings/{recording_id}/generate-notes` | Generate structured notes |
-| `GET` | `/api/recordings/{recording_id}/notes` | Retrieve saved structured notes |
+|---|---|---|
+| `POST` | `/api/recordings` | Upload audio |
+| `GET` | `/api/recordings` | List recordings |
+| `GET` | `/api/recordings/{id}` | Retrieve recording |
+| `DELETE` | `/api/recordings/{id}` | Delete recording |
 
-### Recording List Response
+Pagination is supported:
 
-The recording-list endpoint returns an object containing an `items` array:
+```text
+/api/recordings?limit=20&offset=0
+```
+
+The list response currently uses:
 
 ```json
 {
@@ -279,230 +543,902 @@ The recording-list endpoint returns an object containing an `items` array:
 }
 ```
 
-The frontend must read `response.items`; the response itself is not an array.
+The frontend API layer extracts the `items` collection before storing it in application state.
 
-### Upload a Recording
+---
 
-```bash
-curl -X POST \
-  "http://localhost:8000/api/recordings" \
-  -H "accept: application/json" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@sample.mp3;type=audio/mpeg"
+# Transcription
+
+Start transcription:
+
+```text
+POST /api/recordings/{recording_id}/transcribe
 ```
 
-### Transcribe a Recording
+Retrieve transcript:
 
-```bash
-curl -X POST \
-  "http://localhost:8000/api/recordings/RECORDING_ID/transcribe" \
-  -H "accept: application/json"
+```text
+GET /api/recordings/{recording_id}/transcript
 ```
 
-### Generate Structured Notes
+Workflow:
 
-```bash
-curl -X POST \
-  "http://localhost:8000/api/recordings/RECORDING_ID/generate-notes" \
-  -H "accept: application/json"
+```text
+uploaded
+   ↓
+transcribing
+   ↓
+Whisper
+   ↓
+transcript + segments
+   ↓
+transcribed
 ```
 
-Replace `RECORDING_ID` with the UUID returned by the upload endpoint.
+If transcription fails:
 
-## Supported Audio Types
+```text
+failed
+```
 
-The upload API currently accepts the following MIME types:
+and the backend stores the transcription error.
 
-- `audio/mpeg`
-- `audio/mp4`
-- `audio/x-m4a`
-- `audio/wav`
-- `audio/x-wav`
-- `audio/webm`
+---
 
-Files with unsupported content types are rejected with a clear validation error.
+# Structured AI Notes
 
-When using `curl`, explicitly providing the correct MIME type may be necessary. Otherwise, the file may be submitted as `application/octet-stream` and rejected.
+Generate notes:
 
-## Transcription
+```text
+POST /api/recordings/{recording_id}/generate-notes
+```
 
-Transcription runs locally with Whisper rather than sending audio to an external transcription API.
+Retrieve notes:
 
-The default development configuration uses:
+```text
+GET /api/recordings/{recording_id}/notes
+```
+
+The generation workflow is:
+
+```text
+Persisted Transcript
+        ↓
+Prompt
+        ↓
+LLM
+        ↓
+Structured Response
+        ↓
+Pydantic Validation
+        ↓
+GeneratedNote
+        ↓
+Database
+```
+
+The expected structure is:
+
+```json
+{
+  "summary": "Concise summary",
+  "decisions": [],
+  "action_items": [],
+  "key_points": [],
+  "follow_up_questions": []
+}
+```
+
+Action items use a structured schema:
+
+```json
+{
+  "task": "Complete database migration",
+  "owner": "Vijay",
+  "due_date": null
+}
+```
+
+---
+
+# Prompt Guardrails
+
+The generation prompt instructs the model to:
+
+- Use only information supported by the transcript
+- Avoid inventing names
+- Avoid inventing owners
+- Avoid inventing deadlines
+- Avoid inventing decisions
+- Return `null` when information is unknown
+- Keep summaries concise
+- Keep key points factual
+- Identify unresolved items as follow-up questions
+
+---
+
+# Prompt Version Tracking
+
+Prompts are treated as part of application behavior.
+
+Every generated note stores:
+
+```text
+model_name
+prompt_version
+created_at
+```
+
+Example:
+
+```text
+model_name = gpt-5-mini
+prompt_version = v1
+```
+
+If the prompt later changes:
+
+```text
+Prompt v1
+   ↓
+Note A
+Note B
+
+Prompt improved
+
+Prompt v2
+   ↓
+Note C
+Note D
+```
+
+Existing notes still retain the version that created them.
+
+This provides traceability for:
+
+- Debugging
+- Prompt evaluation
+- Regression analysis
+- Hallucination analysis
+- Model comparison
+- Reproducibility
+
+---
+
+# Duplicate Generation Protection
+
+If generated notes already exist for a transcript, ClearNote AI returns the persisted result instead of unnecessarily calling the LLM again.
+
+This avoids:
+
+- Duplicate records
+- Additional API cost
+- Increased latency
+- Unnecessary model calls
+
+---
+
+# Mock AI Development Mode
+
+ClearNote AI supports an optional **mock AI mode** so the complete application can be developed and demonstrated without requiring paid API usage.
+
+Backend configuration:
 
 ```env
+MOCK_AI=true
+```
+
+When mock mode is enabled:
+
+```text
+Generate Notes
+      ↓
+FastAPI
+      ↓
+Mock note generator
+      ↓
+Structured GeneratedNoteContent
+      ↓
+Database
+      ↓
+Frontend
+```
+
+No OpenAI API request is made.
+
+This allows development of:
+
+- Frontend workflows
+- Database persistence
+- API behavior
+- Loading states
+- Error handling
+- Historical recording restoration
+
+without spending API credits.
+
+To use the real OpenAI integration:
+
+```env
+MOCK_AI=false
+OPENAI_API_KEY=your_api_key
+OPENAI_MODEL=gpt-5-mini
+```
+
+The application architecture remains the same regardless of which mode is used.
+
+---
+
+# Frontend Workspace
+
+The frontend now provides a persistent recording workspace.
+
+When ClearNote AI opens:
+
+```text
+Load application
+      ↓
+GET recent recordings
+      ↓
+Display recording workspace
+```
+
+Each recording card shows:
+
+- Filename
+- Creation time
+- Processing status
+- Suggested next action
+
+Example:
+
+```text
+🎙️ team-meeting.m4a
+
+Sep 20, 2026, 10:15 AM
+
+[Transcribed]  Open transcript and notes
+```
+
+Status badges currently include:
+
+```text
+Uploaded       → Slate
+Transcribing   → Indigo
+Transcribed    → Green
+Failed         → Red
+```
+
+---
+
+# Reopening Historical Recordings
+
+Historical recordings are clickable.
+
+When a recording is selected:
+
+```text
+Click recording
+      ↓
+Set active recording
+      ↓
+Load persisted transcript
+      ↓
+Load persisted notes
+      ↓
+Restore workspace
+```
+
+The application does **not** rerun Whisper or regenerate AI notes simply because a historical recording is reopened.
+
+Existing persisted results are reused.
+
+If the recording has not been transcribed yet:
+
+```text
+Open recording
+      ↓
+No transcript
+      ↓
+Show Transcribe
+```
+
+If a transcript exists but notes do not:
+
+```text
+Open recording
+      ↓
+Restore transcript
+      ↓
+Show Generate Notes
+```
+
+If both exist:
+
+```text
+Open recording
+      ↓
+Restore transcript
+      ↓
+Restore AI notes
+```
+
+---
+
+# URL-Persisted Recording Selection
+
+The currently selected recording is stored in the browser URL.
+
+Example:
+
+```text
+http://localhost:3000/?recording=<recording-uuid>
+```
+
+This gives the frontend a persistent source of truth for which recording is currently selected.
+
+Flow:
+
+```text
+User clicks recording
+      ↓
+URL receives recording UUID
+      ↓
+Recording becomes highlighted
+      ↓
+User refreshes page
+      ↓
+UUID remains in URL
+      ↓
+Frontend reloads recording history
+      ↓
+Matching recording is found
+      ↓
+Selection is restored
+      ↓
+Transcript and notes are restored
+```
+
+This means a browser refresh no longer destroys the user's active workspace.
+
+---
+
+# Frontend State
+
+The frontend currently manages:
+
+- Selected audio file
+- Current recording
+- Recording history
+- Transcript
+- Generated notes
+- Processing step
+- Loading states
+- API errors
+- Recording restoration
+
+The URL stores the selected recording ID, while persisted application data remains in the backend database.
+
+---
+
+# Frontend Theme
+
+ClearNote AI uses a minimal **indigo + slate** design system.
+
+```text
+Indigo 600   Primary brand and actions
+Indigo 50    Soft accent backgrounds
+Slate 950    Main headings
+Slate 700    Body text
+Slate 500    Secondary metadata
+Slate 50     Secondary panels
+White        Main cards
+```
+
+The goal is a clean, modern, professional AI-product interface without unnecessary visual complexity.
+
+---
+
+# Backend Setup
+
+From the repository root:
+
+```bash
+cd backend
+
+python3.11 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Create local environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Apply migrations:
+
+```bash
+python -m alembic upgrade head
+```
+
+Start FastAPI:
+
+```bash
+python -m fastapi dev app/main.py
+```
+
+Backend:
+
+```text
+http://localhost:8000
+```
+
+FastAPI documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+Health check:
+
+```text
+http://localhost:8000/health
+```
+
+---
+
+# Backend Environment Configuration
+
+Example `.env`:
+
+```env
+DATABASE_URL=sqlite+aiosqlite:///./clearnote.db
+
 WHISPER_MODEL_NAME=tiny
 WHISPER_DEVICE=cpu
+
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5-mini
+
+MOCK_AI=true
 ```
 
-The `tiny` model keeps local development fast and lightweight. A larger Whisper model can improve transcription quality at the cost of additional memory and processing time.
+For free local development:
 
-Transcription results are stored so repeated `GET` requests do not rerun Whisper. The API also prevents accidental duplicate transcript creation for the same recording.
-
-## Structured AI Notes
-
-After transcription, ClearNote AI sends the saved transcript to the configured OpenAI model. The response is converted into structured note data and saved in the database.
-
-The note-generation flow:
-
-1. Validates that the recording exists.
-2. Validates that a transcript exists.
-3. Checks whether notes have already been generated.
-4. Builds the request using the current versioned prompt.
-5. Calls the configured OpenAI model.
-6. Validates and normalizes the structured response.
-7. Saves the note, model name, and prompt version.
-8. Returns the persisted note through the API.
-
-Keeping note generation separate from transcription allows either AI component to change without rewriting the complete workflow.
-
-## Prompt Version Tracking
-
-Every generated note stores the prompt version used to create it.
-
-Prompt version tracking is important because changing the prompt can change the format, completeness, tone, or accuracy of generated notes even when the transcript and model remain the same. Recording the version makes an output reproducible and auditable.
-
-For example:
-
-```text
-prompt_version = v1
-model_name = gpt-5-mini
+```env
+MOCK_AI=true
 ```
 
-If the prompt later changes to `v2`, old notes remain associated with `v1`. This makes it possible to compare prompt behavior, investigate inconsistent results, and intentionally regenerate notes when a newer prompt is introduced.
+For real LLM generation:
 
-## Frontend Dashboard
+```env
+MOCK_AI=false
+OPENAI_API_KEY=your_api_key
+```
 
-The Next.js frontend currently supports:
+Never commit the actual `.env` file.
 
-- Audio file selection
-- File upload
-- Local Whisper transcription
-- Structured note generation
-- Processing and error messages
-- Transcript display
-- Structured-note display
-- Persistent recording history loaded from the backend
-- Status badges showing recording progress
-- Immediate history updates after a successful upload or processing step
-- Responsive indigo and slate interface
+---
 
-The dashboard reloads saved recording metadata after a browser refresh. The next frontend feature is selecting a historical recording and restoring its saved transcript and notes into the main workspace without rerunning transcription or note generation.
+# Frontend Setup
 
-## Error Handling
-
-The API provides explicit errors for common failure cases, including:
-
-- Unsupported audio type
-- Missing recording
-- Missing transcript
-- Missing generated note
-- Duplicate transcription requests
-- Duplicate note-generation requests
-- Invalid or incomplete model output
-- Missing OpenAI configuration
-- File-system or database failures
-
-The frontend converts backend failures into readable user-facing messages instead of exposing raw exceptions.
-
-## Running Tests
-
-From the `backend` directory:
+From the repository root:
 
 ```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend:
+
+```text
+http://localhost:3000
+```
+
+Frontend environment:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+---
+
+# Running ClearNote AI Locally
+
+Use two terminal windows.
+
+## Terminal 1 — Backend
+
+```bash
+cd ~/Documents/Projects/clearnote-ai/backend
+
 source .venv/bin/activate
-pytest -v
+
+python -m alembic upgrade head
+
+python -m fastapi dev app/main.py
 ```
 
-The test suite covers the core recording lifecycle, validation, missing-resource responses, transcription behavior, note-generation behavior, persistence, and duplicate protection. External AI calls should be mocked in automated tests so the suite remains fast, deterministic, and does not require paid API requests.
-
-To test a specific file:
+## Terminal 2 — Frontend
 
 ```bash
-pytest -v tests/test_recordings.py
+cd ~/Documents/Projects/clearnote-ai/frontend
+
+npm run dev
 ```
 
-## Current Limitations
-
-- Audio files are stored on the local filesystem.
-- SQLite is intended for local development rather than multi-user production workloads.
-- Whisper transcription currently runs in the web request instead of a background worker.
-- Large audio files may take significant time to process on CPU.
-- The frontend loads recording history but does not yet reopen a selected recording.
-- Generated notes are not yet editable in the UI.
-- Authentication and per-user data isolation are not yet implemented.
-- Export formats are not yet implemented.
-- Document ingestion and retrieval-augmented generation are not yet implemented.
-
-## Roadmap
-
-### Next: Reopen Historical Recordings
-
-- Make each history item selectable.
-- Fetch the selected recording's saved transcript.
-- Fetch its saved structured notes when available.
-- Restore the saved content into the main workspace.
-- Avoid rerunning completed processing steps.
-
-### Processing Experience
-
-- Improve loading states and step-level progress indicators.
-- Disable actions while a request is active.
-- Add clearer retry behavior for recoverable failures.
-- Display processing duration and additional recording metadata.
-
-### Human Review and Export
-
-- Allow users to edit generated notes.
-- Track human-reviewed content separately from the original AI output.
-- Export transcripts and notes to Markdown, text, or PDF.
-
-### Document Ingestion and RAG
-
-- Upload reference documents.
-- Extract and chunk document content.
-- Generate and store embeddings.
-- Ask questions across saved documents and transcripts.
-- Return citations with answers.
-- Detect and communicate insufficient evidence rather than inventing an answer.
-
-### Production Readiness
-
-- Replace local audio storage with object storage.
-- Replace SQLite with PostgreSQL.
-- Move transcription and note generation to background workers.
-- Add authentication and authorization.
-- Add per-user ownership and data isolation.
-- Add structured logging, metrics, tracing, and operational alerts.
-- Add containerized deployment and CI/CD.
-- Add retention and deletion controls for sensitive recordings.
-
-## Security and Privacy
-
-ClearNote AI is currently a development and portfolio project. It is not yet intended for production use with protected health information, confidential business recordings, or other sensitive data.
-
-Before production use, the application would require authentication, authorization, encryption, secure object storage, secret management, audit logging, retention controls, data-deletion workflows, provider security review, and appropriate regulatory controls.
-
-Never commit real API keys, `.env` files, uploaded recordings, transcripts containing sensitive information, or local database files.
-
-## Files Excluded from Git
-
-The repository should exclude local and generated files such as:
+Then open:
 
 ```text
-.env
-.env.local
-.venv/
-__pycache__/
-.pytest_cache/
-*.db
-uploads/
-node_modules/
-.next/
+http://localhost:3000
 ```
 
-## License
+---
 
-Copyright (c) 2026 Vijay Karingula. All rights reserved.
+# API Overview
 
-This repository is publicly viewable for demonstration and portfolio purposes only. No permission is granted to copy, modify, distribute, sublicense, sell, or use this software or its source code without prior written permission from the copyright holder.
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Health check |
+| `POST` | `/api/recordings` | Upload audio |
+| `GET` | `/api/recordings` | List recordings |
+| `GET` | `/api/recordings/{id}` | Retrieve recording |
+| `DELETE` | `/api/recordings/{id}` | Delete recording |
+| `POST` | `/api/recordings/{id}/transcribe` | Run Whisper |
+| `GET` | `/api/recordings/{id}/transcript` | Retrieve transcript |
+| `POST` | `/api/recordings/{id}/generate-notes` | Generate AI notes |
+| `GET` | `/api/recordings/{id}/notes` | Retrieve generated notes |
+
+---
+
+# Error Handling
+
+ClearNote AI handles common backend failures explicitly.
+
+Examples:
+
+```text
+Recording not found
+→ 404
+```
+
+```text
+Generate notes before transcription
+→ 409
+```
+
+```text
+LLM generation failure
+→ 502
+```
+
+```text
+Unsupported audio type
+→ 415
+```
+
+```text
+Database persistence failure
+→ rollback
+```
+
+The frontend surfaces API errors to the user rather than silently failing.
+
+---
+
+# Testing
+
+The backend uses:
+
+- Pytest
+- HTTPX
+- Async test clients
+- Dependency overrides
+- Mocked external AI calls
+
+Tests cover functionality such as:
+
+- Health endpoint
+- Audio upload
+- File validation
+- Recording persistence
+- Recording retrieval
+- Recording listing
+- Pagination
+- Recording deletion
+- Audio cleanup
+- Missing recordings
+- Transcription workflow
+- Generated-note generation
+- Generated-note retrieval
+- Missing transcript handling
+- Duplicate generation protection
+- LLM failure handling
+
+---
+
+# Why Mock External AI Calls in Tests?
+
+Automated tests should not depend on:
+
+- Internet connectivity
+- Paid API usage
+- External API uptime
+- Rate limits
+- Non-deterministic model responses
+
+Therefore:
+
+```text
+Production
+API → OpenAI → Structured result
+
+Tests
+API → Mock function → Deterministic result
+```
+
+This keeps tests:
+
+- Fast
+- Free
+- Repeatable
+- Deterministic
+
+---
+
+# Frontend Quality Checks
+
+Run:
+
+```bash
+cd frontend
+
+npm run lint
+npm run build
+```
+
+The production build validates:
+
+- TypeScript
+- React behavior
+- Next.js production compatibility
+- Static/prerender requirements
+
+---
+
+# Security and Privacy
+
+The current project is intended for development and portfolio demonstration.
+
+Do not upload real:
+
+- Protected health information
+- Personally identifiable information
+- Confidential company recordings
+- Sensitive legal information
+- Sensitive financial information
+
+Use synthetic, public, or personally created test audio.
+
+Never commit:
+
+- OpenAI API keys
+- AWS credentials
+- Database passwords
+- JWT signing secrets
+- `.env` files
+
+---
+
+# Files Excluded From Git
+
+Do not commit:
+
+```text
+backend/.env
+backend/clearnote.db
+backend/.venv/
+backend/storage/audio/*
+frontend/.env.local
+frontend/node_modules/
+frontend/.next/
+```
+
+The storage placeholder may remain tracked:
+
+```text
+backend/storage/audio/.gitkeep
+```
+
+---
+
+# Current MVP
+
+ClearNote AI currently provides the following end-to-end flow:
+
+```text
+Audio
+   ↓
+Upload
+   ↓
+FastAPI
+   ↓
+Local Storage
+   ↓
+SQLite
+   ↓
+Whisper
+   ↓
+Transcript
+   ↓
+Structured AI Notes
+   ↓
+Persistence
+   ↓
+Next.js Workspace
+   ↓
+Historical Reopening
+   ↓
+Refresh Restoration
+```
+
+The project currently demonstrates:
+
+- Backend API design
+- Async Python
+- Relational data modeling
+- Database migrations
+- File validation
+- Audio processing
+- Local ML inference
+- LLM integration
+- Structured LLM output
+- Prompt engineering
+- Prompt version tracking
+- External-service abstraction
+- Mock AI development mode
+- Error handling
+- Testing and mocking
+- React state management
+- TypeScript API contracts
+- Frontend/backend integration
+- Persistent application state
+- URL-driven UI state
+- Production frontend build validation
+- AI-product UI design
+
+---
+
+# Development Roadmap
+
+## Completed — Backend
+
+- FastAPI foundation
+- Audio upload
+- File validation
+- Local audio storage
+- UUID recording IDs
+- SQLite persistence
+- SQLAlchemy async ORM
+- Alembic migrations
+- Recording listing
+- Recording retrieval
+- Pagination
+- Recording deletion
+- Whisper integration
+- Whisper model caching
+- Transcription status tracking
+- Transcript persistence
+- Timestamped transcript segments
+- Transcript retrieval
+- OpenAI integration
+- Structured AI output
+- Pydantic validation
+- Prompt guardrails
+- Prompt version tracking
+- Model metadata tracking
+- Generated-note persistence
+- Generated-note retrieval
+- Duplicate-generation protection
+- Mock AI mode
+- Automated backend testing
+
+## Completed — Frontend
+
+- Next.js application
+- TypeScript API models
+- Backend API client
+- Audio file picker
+- Audio upload
+- Recording metadata
+- Transcription action
+- Transcript viewer
+- Timestamped segments
+- AI note generation
+- Structured notes viewer
+- Loading states
+- Error states
+- Recording history workspace
+- Improved recording cards
+- Recording status badges
+- Historical recording reopening
+- Persisted transcript restoration
+- Persisted AI note restoration
+- URL-based recording selection
+- Selected-recording highlighting
+- Selection restoration after refresh
+- Indigo + slate visual design
+- Production lint/build validation
+
+## Next
+
+- Automatically scroll to the active recording details
+- Break large frontend page into reusable components
+- Improve processing indicators
+- Human review/editing workflow
+- Save reviewed notes
+- Distinguish AI-generated notes from human-edited notes
+- Markdown export
+- JSON export
+- Improve accessibility
+- Add frontend tests
+
+## Later — Productionization
+
+- Background transcription jobs
+- Job queue
+- PostgreSQL
+- Amazon S3
+- Authentication
+- Authorization
+- Retry handling
+- Structured logging
+- Observability
+- Docker Compose
+- CI/CD
+- Cloud deployment
+- Terraform
+- LLM evaluation framework
+- Cost tracking
+- Human review audit trail
+
+---
+
+# Future AI Engineering Improvements
+
+Potential future AI-focused work includes:
+
+```text
+Prompt versions
+      ↓
+Evaluation dataset
+      ↓
+Run prompt/model experiments
+      ↓
+Measure:
+  - decision accuracy
+  - action-item extraction
+  - hallucination rate
+  - missing information
+      ↓
+Promote better prompt/model
+```
+
+This would evolve ClearNote AI from basic prompt engineering toward a measurable LLM evaluation and deployment workflow.
+
+---
+
+# License
+
+Copyright © 2026 Vijay. All Rights Reserved.
+
+This repository is publicly available for portfolio and demonstration purposes only.
+
+No permission is granted to copy, reproduce, modify, distribute, sublicense, publish, sell, commercially use, or create derivative works from this software without prior written permission from the copyright holder.
+
+See the `LICENSE` file for full terms.
