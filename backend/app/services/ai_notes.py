@@ -1,7 +1,7 @@
 from openai import AsyncOpenAI
 
 from app.core.config import settings
-from app.schemas.generated_note import GeneratedNoteContent
+from app.schemas.generated_note import GeneratedNoteContent, ActionItem
 
 
 PROMPT_VERSION = "v1"
@@ -33,14 +33,32 @@ def get_openai_client() -> AsyncOpenAI:
         api_key=settings.openai_api_key,
     )
 
-
 async def generate_note_content(
     transcript_text: str,
 ) -> GeneratedNoteContent:
-    """Generate validated structured notes from a transcript."""
-
     if not transcript_text.strip():
         raise ValueError("Transcript text cannot be empty.")
+
+    if settings.mock_ai:
+        return GeneratedNoteContent(
+            summary="Mock summary generated for development.",
+            decisions=[
+                "Mock decision extracted from the transcript."
+            ],
+            action_items=[
+                ActionItem(
+                    task="Review the generated notes.",
+                    owner=None,
+                    due_date=None,
+                )
+            ],
+            key_points=[
+                "This response was generated in mock AI mode."
+            ],
+            follow_up_questions=[
+                "Would you like to enable real AI generation later?"
+            ],
+        )
 
     client = get_openai_client()
 

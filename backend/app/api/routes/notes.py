@@ -127,6 +127,7 @@ async def generate_notes(
 
     except Exception as exc:
         await session.rollback()
+        print(f"AI note generation failed: {repr(exc)}")
 
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
