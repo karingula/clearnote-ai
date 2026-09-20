@@ -95,3 +95,47 @@ export async function listRecordings(): Promise<Recording[]> {
 
   return data.items;
 }
+
+export async function getRecording(
+  recordingId: string
+): Promise<Recording> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/recordings/${recordingId}`
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json();
+}
+
+
+export async function getTranscript(
+  recordingId: string
+): Promise<Transcript> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/recordings/${recordingId}/transcript`
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json();
+}
+
+
+export async function getNotes(
+  recordingId: string
+): Promise<GeneratedNote> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/recordings/${recordingId}/notes`
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json();
+}
