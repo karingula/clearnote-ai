@@ -2,22 +2,20 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid
+from sqlalchemy import DateTime, ForeignKey, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.models.reviewed_note import ReviewedNote
 
 
 if TYPE_CHECKING:
-    from app.models.transcript import Transcript
-    from app.models.reviewed_note import ReviewedNote
+    from app.models.generated_note import GeneratedNote
 
 
-class GeneratedNote(Base):
-    """Represents a Structured AI-generated notes associated with a transcript."""
-    
-    __tablename__ = "generated_notes"
+class ReviewedNote(Base):
+    """Human-reviewed version of an AI-generated note."""
+
+    __tablename__ = "reviewed_notes"
 
     id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -25,15 +23,15 @@ class GeneratedNote(Base):
         default=uuid4,
     )
 
-    transcript_id: Mapped[UUID] = mapped_column(
+    generated_note_id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey(
-            "transcripts.id",
+            "generated_notes.id",
             ondelete="CASCADE",
         ),
         nullable=False,
-        index=True,
         unique=True,
+        index=True,
     )
 
     summary: Mapped[str] = mapped_column(
@@ -65,30 +63,20 @@ class GeneratedNote(Base):
         default="[]",
     )
 
-    model_name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-    )
-
-    prompt_version: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
+    reviewed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
-    transcript: Mapped["Transcript"] = relationship(
-        "Transcript",
-        back_populates="generated_note",
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
     )
 
-    reviewed_note: Mapped["ReviewedNote | None"] = relationship(
-         "ReviewedNote",
-         back_populates="generated_note",
-         cascade="all, delete-orphan",
-         uselist=False,
+    generated_note: Mapped["GeneratedNote"] = relationship(
+        "GeneratedNote",
+        back_populates="reviewed_note",
     )
