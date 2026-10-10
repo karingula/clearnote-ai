@@ -55,3 +55,23 @@ export type GeneratedNote = {
   prompt_version: string;
   created_at: string;
 };
+
+export type ReviewedNote = {
+  id: string;
+  generated_note_id: string;
+  summary: string;
+  decisions: string[];
+  action_items: ActionItem[];
+  key_points: string[];
+  follow_up_questions: string[];
+  reviewed_at: string;
+  updated_at: string;
+};
+
+export type ReviewedNoteInput = {
+  summary: string;
+  decisions: string[];
+  action_items: ActionItem[];
+  key_points: string[];
+  follow_up_questions: string[];
+};

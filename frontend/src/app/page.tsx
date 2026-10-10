@@ -11,8 +11,10 @@ import RecordingDetails from "@/components/RecordingDetails";
 import {
   generateNotes,
   getNotes,
+  getReviewedNote,
   getTranscript,
   listRecordings,
+  saveReviewedNote,
   transcribeRecording,
   uploadRecording,
 } from "@/lib/api";
@@ -20,6 +22,8 @@ import {
 import type {
   GeneratedNote,
   Recording,
+  ReviewedNote,
+  ReviewedNoteInput,
   Transcript,
 } from "@/types/api";
 
@@ -57,6 +61,12 @@ function ClearNotePage() {
   const [notes, setNotes] =
     useState<GeneratedNote | null>(null);
 
+  const [reviewedNote, setReviewedNote] =
+    useState<ReviewedNote | null>(null);
+
+  const [savingReview, setSavingReview] =
+    useState(false);
+
   const [step, setStep] =
     useState<ProcessingStep>("idle");
 
@@ -84,6 +94,7 @@ function ClearNotePage() {
     setRecording(null);
     setTranscript(null);
     setNotes(null);
+    setReviewedNote(null);
     setError(null);
 
     setStep("idle");
@@ -144,9 +155,9 @@ function ClearNotePage() {
       setRecording((current) =>
         current
           ? {
-              ...current,
-              status: "transcribed",
-            }
+            ...current,
+            status: "transcribed",
+          }
           : current
       );
 
@@ -154,9 +165,9 @@ function ClearNotePage() {
         current.map((item) =>
           item.id === recording.id
             ? {
-                ...item,
-                status: "transcribed",
-              }
+              ...item,
+              status: "transcribed",
+            }
             : item
         )
       );
@@ -218,6 +229,7 @@ function ClearNotePage() {
 
       setTranscript(null);
       setNotes(null);
+      setReviewedNote(null);
 
       let existingTranscript: Transcript | null =
         null;
@@ -243,8 +255,20 @@ function ClearNotePage() {
 
           setNotes(existingNotes);
           setStep("complete");
+
+          try {
+            const existingReviewedNote =
+              await getReviewedNote(
+                selectedRecording.id
+              );
+
+            setReviewedNote(existingReviewedNote);
+          } catch {
+            setReviewedNote(null);
+          }
         } catch {
           setNotes(null);
+          setReviewedNote(null);
         }
       }
     } catch (err) {
@@ -257,6 +281,37 @@ function ClearNotePage() {
       setStep("error");
     } finally {
       setOpeningRecording(false);
+    }
+  }
+
+  async function handleSaveReviewedNote(
+    payload: ReviewedNoteInput
+  ) {
+    if (!recording) {
+      return;
+    }
+
+    try {
+      setError(null);
+      setSavingReview(true);
+
+      const result =
+        await saveReviewedNote(
+          recording.id,
+          payload
+        );
+
+      setReviewedNote(result);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not save reviewed notes."
+      );
+
+      throw err;
+    } finally {
+      setSavingReview(false);
     }
   }
 
@@ -311,64 +366,82 @@ function ClearNotePage() {
     }
 
     const selectedRecording =
-  recordings.find(
-    (item) =>
-      item.id === selectedRecordingId
-  );
+      recordings.find(
+        (item) =>
+          item.id === selectedRecordingId
+      );
 
-if (!selectedRecording) {
-  return;
-}
-
-const restoredRecording: Recording =
-  selectedRecording;
-
-const recordingId =
-  restoredRecording.id;
-
-let cancelled = false;
-
-async function restoreRecording() {
-  let existingTranscript:
-    | Transcript
-    | null = null;
-
-  let existingNotes:
-    | GeneratedNote
-    | null = null;
-
-  try {
-    existingTranscript =
-      await getTranscript(recordingId);
-  } catch {
-    existingTranscript = null;
-  }
-
-  if (existingTranscript) {
-    try {
-      existingNotes =
-        await getNotes(recordingId);
-    } catch {
-      existingNotes = null;
+    if (!selectedRecording) {
+      return;
     }
-  }
 
-  if (cancelled) {
-    return;
-  }
+    const restoredRecording: Recording =
+      selectedRecording;
 
-  setRecording(restoredRecording);
-  setTranscript(existingTranscript);
-  setNotes(existingNotes);
+    const recordingId =
+      restoredRecording.id;
 
-  if (existingNotes) {
-    setStep("complete");
-  } else if (existingTranscript) {
-    setStep("transcribed");
-  } else {
-    setStep("uploaded");
-  }
-}
+    let cancelled = false;
+
+    async function restoreRecording() {
+      let existingTranscript:
+        | Transcript
+        | null = null;
+
+      let existingNotes:
+        | GeneratedNote
+        | null = null;
+
+      let existingReviewedNote:
+        | ReviewedNote
+        | null = null;
+
+      try {
+        existingTranscript =
+          await getTranscript(recordingId);
+      } catch {
+        existingTranscript = null;
+      }
+
+      if (existingTranscript) {
+        try {
+          existingNotes =
+            await getNotes(recordingId);
+        } catch {
+          existingNotes = null;
+        }
+      }
+
+      if (existingNotes) {
+        try {
+          existingReviewedNote =
+            await getReviewedNote(recordingId);
+        } catch {
+          existingReviewedNote = null;
+        }
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setRecording(restoredRecording);
+      setTranscript(existingTranscript);
+      setNotes(existingNotes);
+      setReviewedNote(existingReviewedNote);
+
+      if (existingNotes) {
+        setStep("complete");
+      } else if (existingTranscript) {
+        setStep("transcribed");
+      } else {
+        setStep("uploaded");
+      }
+    }
 
     void restoreRecording();
 
@@ -437,15 +510,15 @@ async function restoreRecording() {
         {/* Current Recording */}
         {recording && (
           <RecordingDetails
-          recording={recording}
-          hasTranscript={Boolean(transcript)}
-          transcribing={step === "transcribing"}
-          onTranscribe={handleTranscribe}
-         />
+            recording={recording}
+            hasTranscript={Boolean(transcript)}
+            transcribing={step === "transcribing"}
+            onTranscribe={handleTranscribe}
+          />
         )}
 
         {/* Transcript */}
-        
+
         {transcript && (
           <TranscriptViewer
             transcript={transcript}
@@ -457,7 +530,12 @@ async function restoreRecording() {
 
         {/* AI Notes */}
         {notes && (
-          <NotesPanel notes={notes} />
+          <NotesPanel
+            notes={notes}
+            reviewedNote={reviewedNote}
+            savingReview={savingReview}
+            onSaveReview={handleSaveReviewedNote}
+          />
         )}
 
       </div>

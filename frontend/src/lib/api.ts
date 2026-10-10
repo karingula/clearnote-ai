@@ -2,6 +2,8 @@ import type {
   GeneratedNote,
   Recording,
   RecordingListResponse,
+  ReviewedNote,
+  ReviewedNoteInput,
   Transcript,
 } from "@/types/api";
 
@@ -9,12 +11,22 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
 
-async function parseApiError(response: Response): Promise<string> {
+async function parseApiError(
+  response: Response
+): Promise<string> {
   try {
     const body = await response.json();
 
     if (typeof body.detail === "string") {
       return body.detail;
+    }
+
+    if (Array.isArray(body.detail)) {
+      return JSON.stringify(
+        body.detail,
+        null,
+        2
+      );
     }
 
     return `Request failed with status ${response.status}`;
@@ -131,6 +143,43 @@ export async function getNotes(
 ): Promise<GeneratedNote> {
   const response = await fetch(
     `${API_BASE_URL}/api/recordings/${recordingId}/notes`
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json();
+}
+
+export async function getReviewedNote(
+  recordingId: string
+): Promise<ReviewedNote> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/recordings/${recordingId}/reviewed-notes`
+  );
+
+  if (!response.ok) {
+    throw new Error(await parseApiError(response));
+  }
+
+  return response.json();
+}
+
+
+export async function saveReviewedNote(
+  recordingId: string,
+  payload: ReviewedNoteInput
+): Promise<ReviewedNote> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/recordings/${recordingId}/reviewed-notes`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
   );
 
   if (!response.ok) {
