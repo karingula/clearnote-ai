@@ -12,6 +12,7 @@ from app.api.routes.notes import router as notes_router
 from app.api.routes.reviewed_notes import (
     router as reviewed_notes_router,
 )
+from app.api.routes.evaluations import router as evaluations_router
 
 from app.core.config import settings
 from app.core.database import engine
@@ -48,6 +49,7 @@ app.include_router(recordings_router)
 app.include_router(transcriptions_router)
 app.include_router(notes_router)
 app.include_router(reviewed_notes_router)
+app.include_router(evaluations_router)
 
 
 @app.get("/health", tags=["System"])
