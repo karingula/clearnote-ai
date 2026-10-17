@@ -1,4 +1,4 @@
-```markdown
+
 # ClearNote AI
 
 **Privacy-conscious conversation intelligence for turning recorded conversations into structured, reviewable knowledge.**
