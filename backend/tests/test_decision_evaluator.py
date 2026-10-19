@@ -33,6 +33,12 @@ def test_all_decisions_match() -> None:
     assert result["precision"] == 1.0
     assert result["recall"] == 1.0
     assert result["f1"] == 1.0
+    assert set(result["matched_decisions"]) == {
+        "Deploy Monday",
+        "Notify customers",
+    }
+    assert result["extra_ai_decisions"] == []
+    assert result["missed_reference_decisions"] == []
 
 
 def test_some_decisions_match() -> None:
@@ -64,7 +70,9 @@ def test_some_decisions_match() -> None:
     assert result["f1"] == pytest.approx(
         2 / 3
     )
-
+    assert set(result["matched_decisions"]) == {"Deploy Monday.", "Run migration first"}
+    assert result["extra_ai_decisions"] == ["Notify legal"]
+    assert result["missed_reference_decisions"] == ["Notify customers"]
 
 def test_ai_invents_decisions() -> None:
     result = evaluate_decisions(
