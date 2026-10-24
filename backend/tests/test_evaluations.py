@@ -606,3 +606,271 @@ async def test_dataset_evaluation(
     assert body["recall"] == pytest.approx(
         5 / 7
     )
+
+@pytest.mark.asyncio
+async def test_compare_experiments(
+    client: AsyncClient,
+    test_session: AsyncSession,
+) -> None:
+    # ---------------------------------------------------------
+    # EXPERIMENT A
+    # model = mock-model
+    # prompt = v1
+    # evaluator = v1
+    # ---------------------------------------------------------
+
+    recording_a = Recording(
+        original_filename="compare-v1.wav",
+        stored_filename="compare-v1.wav",
+        content_type="audio/wav",
+        size_bytes=100,
+        status="transcribed",
+    )
+
+    test_session.add(recording_a)
+    await test_session.flush()
+
+    transcript_a = Transcript(
+        recording_id=recording_a.id,
+        text="Prompt v1 transcript.",
+        model_name="whisper-tiny",
+    )
+
+    test_session.add(transcript_a)
+    await test_session.flush()
+
+    generated_note_a = GeneratedNote(
+        transcript_id=transcript_a.id,
+        summary="Prompt v1 summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+        model_name="mock-model",
+        prompt_version="v1",
+    )
+
+    test_session.add(generated_note_a)
+    await test_session.flush()
+
+    reviewed_note_a = ReviewedNote(
+        generated_note_id=generated_note_a.id,
+        summary="Reviewed v1 summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+    )
+
+    test_session.add(reviewed_note_a)
+    await test_session.flush()
+
+    run_a_1 = EvaluationRun(
+        generated_note_id=generated_note_a.id,
+        reviewed_note_id=reviewed_note_a.id,
+        evaluator_name="decision_evaluator",
+        evaluator_version="v1",
+        predicted_decisions_json="[]",
+        reference_decisions_json="[]",
+        matched_decisions_json="[]",
+        extra_ai_decisions_json="[]",
+        missed_reference_decisions_json="[]",
+        true_positives=2,
+        false_positives=2,
+        false_negatives=1,
+        precision=0.5,
+        recall=2 / 3,
+        f1=0.571428571,
+    )
+
+    run_a_2 = EvaluationRun(
+        generated_note_id=generated_note_a.id,
+        reviewed_note_id=reviewed_note_a.id,
+        evaluator_name="decision_evaluator",
+        evaluator_version="v1",
+        predicted_decisions_json="[]",
+        reference_decisions_json="[]",
+        matched_decisions_json="[]",
+        extra_ai_decisions_json="[]",
+        missed_reference_decisions_json="[]",
+        true_positives=2,
+        false_positives=1,
+        false_negatives=1,
+        precision=2 / 3,
+        recall=2 / 3,
+        f1=2 / 3,
+    )
+
+    # ---------------------------------------------------------
+    # EXPERIMENT B
+    # same model
+    # same evaluator
+    # different prompt = v2
+    # ---------------------------------------------------------
+
+    recording_b = Recording(
+        original_filename="compare-v2.wav",
+        stored_filename="compare-v2.wav",
+        content_type="audio/wav",
+        size_bytes=100,
+        status="transcribed",
+    )
+
+    test_session.add(recording_b)
+    await test_session.flush()
+
+    transcript_b = Transcript(
+        recording_id=recording_b.id,
+        text="Prompt v2 transcript.",
+        model_name="whisper-tiny",
+    )
+
+    test_session.add(transcript_b)
+    await test_session.flush()
+
+    generated_note_b = GeneratedNote(
+        transcript_id=transcript_b.id,
+        summary="Prompt v2 summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+        model_name="mock-model",
+        prompt_version="v2",
+    )
+
+    test_session.add(generated_note_b)
+    await test_session.flush()
+
+    reviewed_note_b = ReviewedNote(
+        generated_note_id=generated_note_b.id,
+        summary="Reviewed v2 summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+    )
+
+    test_session.add(reviewed_note_b)
+    await test_session.flush()
+
+    run_b_1 = EvaluationRun(
+        generated_note_id=generated_note_b.id,
+        reviewed_note_id=reviewed_note_b.id,
+        evaluator_name="decision_evaluator",
+        evaluator_version="v1",
+        predicted_decisions_json="[]",
+        reference_decisions_json="[]",
+        matched_decisions_json="[]",
+        extra_ai_decisions_json="[]",
+        missed_reference_decisions_json="[]",
+        true_positives=4,
+        false_positives=0,
+        false_negatives=1,
+        precision=1.0,
+        recall=0.8,
+        f1=0.888888889,
+    )
+
+    run_b_2 = EvaluationRun(
+        generated_note_id=generated_note_b.id,
+        reviewed_note_id=reviewed_note_b.id,
+        evaluator_name="decision_evaluator",
+        evaluator_version="v1",
+        predicted_decisions_json="[]",
+        reference_decisions_json="[]",
+        matched_decisions_json="[]",
+        extra_ai_decisions_json="[]",
+        missed_reference_decisions_json="[]",
+        true_positives=3,
+        false_positives=0,
+        false_negatives=0,
+        precision=1.0,
+        recall=1.0,
+        f1=1.0,
+    )
+
+    test_session.add_all([
+        run_a_1,
+        run_a_2,
+        run_b_1,
+        run_b_2,
+    ])
+
+    await test_session.commit()
+
+    # ---------------------------------------------------------
+    # Compare v1 vs v2
+    # ---------------------------------------------------------
+
+    response = await client.get(
+        "/api/recordings/dataset/evaluation/compare",
+        params={
+            "model_name": "mock-model",
+            "prompt_version_a": "v1",
+            "prompt_version_b": "v2",
+            "evaluator_version": "v1",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    experiment_a = body["experiment_a"]
+    experiment_b = body["experiment_b"]
+
+    # ---------------------------------------------------------
+    # Verify experiment A identity
+    # ---------------------------------------------------------
+
+    assert experiment_a["model_name"] == "mock-model"
+    assert experiment_a["prompt_version"] == "v1"
+    assert experiment_a["evaluator_version"] == "v1"
+
+    # v1 totals:
+    # TP = 2 + 2 = 4
+    # FP = 2 + 1 = 3
+    # FN = 1 + 1 = 2
+
+    assert experiment_a["example_count"] == 2
+    assert experiment_a["true_positives"] == 4
+    assert experiment_a["false_positives"] == 3
+    assert experiment_a["false_negatives"] == 2
+
+    assert experiment_a["precision"] == pytest.approx(
+        4 / 7
+    )
+
+    assert experiment_a["recall"] == pytest.approx(
+        4 / 6
+    )
+
+    # ---------------------------------------------------------
+    # Verify experiment B identity
+    # ---------------------------------------------------------
+
+    assert experiment_b["model_name"] == "mock-model"
+    assert experiment_b["prompt_version"] == "v2"
+    assert experiment_b["evaluator_version"] == "v1"
+
+    # v2 totals:
+    # TP = 4 + 3 = 7
+    # FP = 0 + 0 = 0
+    # FN = 1 + 0 = 1
+
+    assert experiment_b["example_count"] == 2
+    assert experiment_b["true_positives"] == 7
+    assert experiment_b["false_positives"] == 0
+    assert experiment_b["false_negatives"] == 1
+
+    assert experiment_b["precision"] == pytest.approx(
+        1.0
+    )
+
+    assert experiment_b["recall"] == pytest.approx(
+        7 / 8
+    )
+
+    # v2 should perform better than v1
+    assert experiment_b["f1"] > experiment_a["f1"]

@@ -76,3 +76,7 @@ class ExperimentEvaluationResponse(BaseModel):
     precision: float
     recall: float
     f1: float
+
+class ExperimentComparisonResponse(BaseModel):
+    experiment_a: ExperimentEvaluationResponse
+    experiment_b: ExperimentEvaluationResponse

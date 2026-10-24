@@ -18,11 +18,11 @@ from app.models.reviewed_note import ReviewedNote
 from app.models.transcript import Transcript
 from app.models.evaluation_run import EvaluationRun
 from app.schemas.evaluation import (
-    DatasetEvaluationResponse,
     DecisionEvaluationResponse,
     EvaluationRunListResponse,
     EvaluationRunResponse,
     ExperimentEvaluationResponse,
+    ExperimentComparisonResponse,
 )
 
 
@@ -239,3 +239,70 @@ async def evaluate_dataset_runs(
     evaluator_version=evaluator_version,
     **result,
 )
+
+@router.get(
+    "/dataset/evaluation/compare",
+    response_model=ExperimentComparisonResponse,
+)
+async def compare_experiments(
+    model_name: str,
+    prompt_version_a: str,
+    prompt_version_b: str,
+    evaluator_version: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> ExperimentComparisonResponse:
+    """Compare two prompt versions for the same model and evaluator."""
+
+    async def get_experiment_result(
+        prompt_version: str,
+    ) -> ExperimentEvaluationResponse:
+        evaluation_result = await session.execute(
+            select(EvaluationRun)
+            .join(
+                GeneratedNote,
+                EvaluationRun.generated_note_id
+                == GeneratedNote.id,
+            )
+            .where(
+                GeneratedNote.model_name == model_name,
+                GeneratedNote.prompt_version
+                == prompt_version,
+                EvaluationRun.evaluator_version
+                == evaluator_version,
+            )
+        )
+
+        evaluation_runs = (
+            evaluation_result.scalars().all()
+        )
+
+        results = [
+            {
+                "true_positives": run.true_positives,
+                "false_positives": run.false_positives,
+                "false_negatives": run.false_negatives,
+            }
+            for run in evaluation_runs
+        ]
+
+        result = evaluate_dataset(results)
+
+        return ExperimentEvaluationResponse(
+            model_name=model_name,
+            prompt_version=prompt_version,
+            evaluator_version=evaluator_version,
+            **result,
+        )
+
+    experiment_a = await get_experiment_result(
+        prompt_version_a
+    )
+
+    experiment_b = await get_experiment_result(
+        prompt_version_b
+    )
+
+    return ExperimentComparisonResponse(
+        experiment_a=experiment_a,
+        experiment_b=experiment_b,
+    )
