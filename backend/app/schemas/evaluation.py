@@ -27,6 +27,9 @@ class EvaluationRunResponse(BaseModel):
     evaluator_name: str
     evaluator_version: str
 
+    model_name: str
+    prompt_version: str
+
     predicted_decisions: list[str]
     reference_decisions: list[str]
 
@@ -44,6 +47,32 @@ class EvaluationRunResponse(BaseModel):
 
     created_at: datetime
 
+class DatasetEvaluationResponse(BaseModel):
+    example_count: int
+
+    true_positives: int
+    false_positives: int
+    false_negatives: int
+
+    precision: float
+    recall: float
+    f1: float
+
 
 class EvaluationRunListResponse(BaseModel):
     items: list[EvaluationRunResponse]
+
+class ExperimentEvaluationResponse(BaseModel):
+    model_name: str
+    prompt_version: str
+    evaluator_version: str
+
+    example_count: int
+
+    true_positives: int
+    false_positives: int
+    false_negatives: int
+
+    precision: float
+    recall: float
+    f1: float

@@ -4,16 +4,25 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db_session
+from app.evaluation.decision_evaluator import (
+    EVALUATOR_NAME,
+    EVALUATOR_VERSION,
+)
 from app.evaluation.note_evaluator import evaluate_note_decisions
+from app.evaluation.dataset_evaluator import (
+    evaluate_dataset,
+)
 
 from app.models.generated_note import GeneratedNote
 from app.models.reviewed_note import ReviewedNote
 from app.models.transcript import Transcript
 from app.models.evaluation_run import EvaluationRun
 from app.schemas.evaluation import (
+    DatasetEvaluationResponse,
     DecisionEvaluationResponse,
     EvaluationRunListResponse,
     EvaluationRunResponse,
+    ExperimentEvaluationResponse,
 )
 
 
@@ -58,8 +67,8 @@ async def evaluate_recording(
     evaluation_run = EvaluationRun(
         generated_note_id=generated_note.id,
         reviewed_note_id=reviewed_note.id,
-        evaluator_name="decision_evaluator",
-        evaluator_version="v1",
+        evaluator_name=EVALUATOR_NAME,
+        evaluator_version=EVALUATOR_VERSION,
         predicted_decisions_json=generated_note.decisions_json,
         reference_decisions_json=reviewed_note.decisions_json,
         matched_decisions_json=json.dumps(
@@ -145,6 +154,8 @@ async def list_evaluation_runs(
             reviewed_note_id=run.reviewed_note_id,
             evaluator_name=run.evaluator_name,
             evaluator_version=run.evaluator_version,
+            model_name=generated_note.model_name,
+            prompt_version=generated_note.prompt_version,
 
             predicted_decisions=json.loads(
                 run.predicted_decisions_json
@@ -179,3 +190,52 @@ async def list_evaluation_runs(
     return EvaluationRunListResponse(
         items=items
     )
+
+@router.get(
+    "/dataset/evaluation",
+    response_model=ExperimentEvaluationResponse,
+)
+async def evaluate_dataset_runs(
+    model_name: str,
+    prompt_version: str,
+    evaluator_version: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> ExperimentEvaluationResponse:
+    """Aggregate evaluation runs for one experiment configuration."""
+
+    evaluation_result = await session.execute(
+        select(EvaluationRun)
+        .join(
+            GeneratedNote,
+            EvaluationRun.generated_note_id
+            == GeneratedNote.id,
+        )
+        .where(
+            GeneratedNote.model_name == model_name,
+            GeneratedNote.prompt_version == prompt_version,
+            EvaluationRun.evaluator_version
+            == evaluator_version,
+        )
+    )
+
+    evaluation_runs = (
+        evaluation_result.scalars().all()
+    )
+
+    results = [
+        {
+            "true_positives": run.true_positives,
+            "false_positives": run.false_positives,
+            "false_negatives": run.false_negatives,
+        }
+        for run in evaluation_runs
+    ]
+
+    result = evaluate_dataset(results)
+
+    return ExperimentEvaluationResponse(
+    model_name=model_name,
+    prompt_version=prompt_version,
+    evaluator_version=evaluator_version,
+    **result,
+)

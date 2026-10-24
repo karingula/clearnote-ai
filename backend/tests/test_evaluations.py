@@ -366,3 +366,243 @@ async def test_create_evaluation_run_without_reviewed_note_returns_404(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Reviewed note not found"
+
+@pytest.mark.asyncio
+async def test_dataset_evaluation(
+    client: AsyncClient,
+    test_session: AsyncSession,
+) -> None:
+    # ---------------------------------------------------------
+    # FIRST RECORDING
+    # This one uses:
+    # model = mock-model
+    # prompt = v1
+    # ---------------------------------------------------------
+
+    recording = Recording(
+        original_filename="dataset.wav",
+        stored_filename="dataset.wav",
+        content_type="audio/wav",
+        size_bytes=100,
+        status="transcribed",
+    )
+
+    test_session.add(recording)
+    await test_session.flush()
+
+    transcript = Transcript(
+        recording_id=recording.id,
+        text="Test transcript.",
+        model_name="whisper-tiny",
+    )
+
+    test_session.add(transcript)
+    await test_session.flush()
+
+    generated_note = GeneratedNote(
+        transcript_id=transcript.id,
+        summary="Test summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+        model_name="mock-model",
+        prompt_version="v1",
+    )
+
+    test_session.add(generated_note)
+    await test_session.flush()
+
+    reviewed_note = ReviewedNote(
+        generated_note_id=generated_note.id,
+        summary="Reviewed summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+    )
+
+    test_session.add(reviewed_note)
+    await test_session.flush()
+
+    # First v1 evaluation run
+    run_1 = EvaluationRun(
+        generated_note_id=generated_note.id,
+        reviewed_note_id=reviewed_note.id,
+        evaluator_name="decision_evaluator",
+        evaluator_version="v1",
+        predicted_decisions_json="[]",
+        reference_decisions_json="[]",
+        matched_decisions_json="[]",
+        extra_ai_decisions_json="[]",
+        missed_reference_decisions_json="[]",
+        true_positives=2,
+        false_positives=1,
+        false_negatives=1,
+        precision=2 / 3,
+        recall=2 / 3,
+        f1=2 / 3,
+    )
+
+    # Second v1 evaluation run
+    run_2 = EvaluationRun(
+        generated_note_id=generated_note.id,
+        reviewed_note_id=reviewed_note.id,
+        evaluator_name="decision_evaluator",
+        evaluator_version="v1",
+        predicted_decisions_json="[]",
+        reference_decisions_json="[]",
+        matched_decisions_json="[]",
+        extra_ai_decisions_json="[]",
+        missed_reference_decisions_json="[]",
+        true_positives=3,
+        false_positives=0,
+        false_negatives=1,
+        precision=1.0,
+        recall=0.75,
+        f1=0.857142857,
+    )
+
+    # ---------------------------------------------------------
+    # SECOND RECORDING
+    # This one uses prompt v2.
+    #
+    # We want to prove that it gets EXCLUDED when we ask
+    # the API specifically for prompt_version=v1.
+    # ---------------------------------------------------------
+
+    second_recording = Recording(
+        original_filename="dataset-v2.wav",
+        stored_filename="dataset-v2.wav",
+        content_type="audio/wav",
+        size_bytes=100,
+        status="transcribed",
+    )
+
+    test_session.add(second_recording)
+    await test_session.flush()
+
+    second_transcript = Transcript(
+        recording_id=second_recording.id,
+        text="Another test transcript.",
+        model_name="whisper-tiny",
+    )
+
+    test_session.add(second_transcript)
+    await test_session.flush()
+
+    second_generated_note = GeneratedNote(
+        transcript_id=second_transcript.id,
+        summary="Another summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+        model_name="mock-model",
+
+        # IMPORTANT:
+        # This is v2, not v1.
+        prompt_version="v2",
+    )
+
+    test_session.add(second_generated_note)
+    await test_session.flush()
+
+    second_reviewed_note = ReviewedNote(
+        generated_note_id=second_generated_note.id,
+        summary="Another reviewed summary",
+        decisions_json="[]",
+        action_items_json="[]",
+        key_points_json="[]",
+        follow_up_questions_json="[]",
+    )
+
+    test_session.add(second_reviewed_note)
+    await test_session.flush()
+
+    # This run intentionally has a huge TP value.
+    #
+    # If our filtering is broken, this 100 will appear
+    # in the dataset result.
+    #
+    # If filtering works, this entire run will be ignored.
+    run_v2 = EvaluationRun(
+        generated_note_id=second_generated_note.id,
+        reviewed_note_id=second_reviewed_note.id,
+        evaluator_name="decision_evaluator",
+        evaluator_version="v1",
+        predicted_decisions_json="[]",
+        reference_decisions_json="[]",
+        matched_decisions_json="[]",
+        extra_ai_decisions_json="[]",
+        missed_reference_decisions_json="[]",
+        true_positives=100,
+        false_positives=0,
+        false_negatives=0,
+        precision=1.0,
+        recall=1.0,
+        f1=1.0,
+    )
+
+    # Save all three evaluation runs.
+    test_session.add_all([
+        run_1,
+        run_2,
+        run_v2,
+    ])
+
+    await test_session.commit()
+
+    # ---------------------------------------------------------
+    # Ask specifically for:
+    #
+    # model = mock-model
+    # prompt = v1
+    # evaluator = v1
+    #
+    # Therefore run_v2 should NOT be included.
+    # ---------------------------------------------------------
+
+    response = await client.get(
+        "/api/recordings/dataset/evaluation",
+        params={
+            "model_name": "mock-model",
+            "prompt_version": "v1",
+            "evaluator_version": "v1",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["model_name"] == "mock-model"
+    assert body["prompt_version"] == "v1"
+    assert body["evaluator_version"] == "v1"
+
+    # Only run_1 and run_2 should be counted.
+    assert body["example_count"] == 2
+
+    # run_1 TP = 2
+    # run_2 TP = 3
+    #
+    # Total = 5
+    #
+    # If run_v2 were accidentally included,
+    # this would become 105.
+    assert body["true_positives"] == 5
+
+    # run_1 FP = 1
+    # run_2 FP = 0
+    assert body["false_positives"] == 1
+
+    # run_1 FN = 1
+    # run_2 FN = 1
+    assert body["false_negatives"] == 2
+
+    assert body["precision"] == pytest.approx(
+        5 / 6
+    )
+
+    assert body["recall"] == pytest.approx(
+        5 / 7
+    )

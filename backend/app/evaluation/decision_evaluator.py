@@ -1,4 +1,6 @@
 import re
+EVALUATOR_NAME = "decision_evaluator"
+EVALUATOR_VERSION = "v1"
 
 def normalize_text(value: str) -> str:
     """Normalize text so simple formatting differences do not matter."""
