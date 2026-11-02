@@ -80,3 +80,9 @@ class ExperimentEvaluationResponse(BaseModel):
 class ExperimentComparisonResponse(BaseModel):
     experiment_a: ExperimentEvaluationResponse
     experiment_b: ExperimentEvaluationResponse
+
+    precision_delta: float
+    recall_delta: float
+    f1_delta: float
+
+    winner: str

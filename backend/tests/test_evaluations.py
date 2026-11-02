@@ -874,3 +874,14 @@ async def test_compare_experiments(
 
     # v2 should perform better than v1
     assert experiment_b["f1"] > experiment_a["f1"]
+
+    assert body["precision_delta"] == pytest.approx(
+        experiment_b["precision"] - experiment_a["precision"]
+    )
+    assert body["recall_delta"] == pytest.approx(
+        experiment_b["recall"] - experiment_a["recall"]
+    )
+    assert body["f1_delta"] == pytest.approx(
+        experiment_b["f1"] - experiment_a["f1"]
+    )
+    assert body["winner"] == "experiment_b"

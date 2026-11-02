@@ -294,15 +294,26 @@ async def compare_experiments(
             **result,
         )
 
-    experiment_a = await get_experiment_result(
-        prompt_version_a
-    )
+    experiment_a = await get_experiment_result(prompt_version_a)
 
-    experiment_b = await get_experiment_result(
-        prompt_version_b
-    )
-
+    experiment_b = await get_experiment_result(prompt_version_b)
+    
+    precision_delta = (experiment_b.precision - experiment_a.precision)
+    recall_delta = (experiment_b.recall - experiment_a.recall)
+    f1_delta = (experiment_b.f1 - experiment_a.f1)
+    
+    if f1_delta > 0:
+        winner = "experiment_b"
+    elif f1_delta < 0:
+        winner = "experiment_a"
+    else:
+        winner = "tie"
+        
     return ExperimentComparisonResponse(
         experiment_a=experiment_a,
         experiment_b=experiment_b,
+        precision_delta=precision_delta,
+        recall_delta=recall_delta,
+        f1_delta=f1_delta,
+        winner=winner,
     )
