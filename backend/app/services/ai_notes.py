@@ -3,22 +3,48 @@ from openai import AsyncOpenAI
 from app.core.config import settings
 from app.schemas.generated_note import GeneratedNoteContent, ActionItem
 
-
 PROMPT_VERSION = "v1"
 
+SYSTEM_PROMPTS = {
+    "v1": """
+    You analyze conversation transcripts and produce structured notes.
+    Rules:
+    - Use only information explicitly supported by the transcript.
+    - Do not invent names, dates, owners, deadlines, decisions, or facts.
+    - If an owner or due date is not stated, return null.
+    - Only include a decision if the transcript clearly indicates that a decision was made.
+    - Keep the summary concise.
+    - Keep key points factual.
+    - Follow-up questions should identify unresolved or unclear items.
+    """,
+    "v2": """
+    You analyze conversation transcripts and produce structured notes.
 
-SYSTEM_PROMPT = """
-You analyze conversation transcripts and produce structured notes.
+    Rules:
+    - Use only information explicitly supported by the transcript.
+    - Do not invent names, dates, owners, deadlines, decisions, or facts.
+    - If an owner or due date is not stated, return null.
+    - Be conservative when identifying decisions.
+    - Only include a decision when the transcript clearly shows that participants
+    reached an agreement, selected an option, approved an action, or committed
+    to a course of action.
+    - Do not classify suggestions, possibilities, questions, or unresolved
+    discussions as decisions.
+    - Keep the summary concise.
+    - Keep key points factual.
+    - Follow-up questions should identify unresolved or unclear items.
+    """,
+}
 
-Rules:
-- Use only information explicitly supported by the transcript.
-- Do not invent names, dates, owners, deadlines, decisions, or facts.
-- If an owner or due date is not stated, return null.
-- Only include a decision if the transcript clearly indicates that a decision was made.
-- Keep the summary concise.
-- Keep key points factual.
-- Follow-up questions should identify unresolved or unclear items.
-"""
+def get_system_prompt(
+    prompt_version: str,
+) -> str:
+    try:
+        return SYSTEM_PROMPTS[prompt_version]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown prompt version: {prompt_version}"
+        ) from exc
 
 
 def get_openai_client() -> AsyncOpenAI:
@@ -35,9 +61,12 @@ def get_openai_client() -> AsyncOpenAI:
 
 async def generate_note_content(
     transcript_text: str,
+    prompt_version: str = PROMPT_VERSION,
 ) -> GeneratedNoteContent:
     if not transcript_text.strip():
         raise ValueError("Transcript text cannot be empty.")
+    
+    system_prompt = get_system_prompt(prompt_version)
 
     if settings.mock_ai:
         return GeneratedNoteContent(
@@ -67,7 +96,7 @@ async def generate_note_content(
         messages=[
             {
                 "role": "system",
-                "content": SYSTEM_PROMPT,
+                "content": system_prompt,
             },
             {
                 "role": "user",

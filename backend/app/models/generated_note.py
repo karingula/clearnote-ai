@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid
+from sqlalchemy import DateTime, ForeignKey, String, Text, Uuid, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -18,6 +18,14 @@ class GeneratedNote(Base):
     """Represents a Structured AI-generated notes associated with a transcript."""
     
     __tablename__ = "generated_notes"
+    __table_args__ = (
+        UniqueConstraint(
+        "transcript_id",
+        "model_name",
+        "prompt_version",
+        name="uq_generated_note_experiment",
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(
         Uuid(as_uuid=True),
@@ -33,7 +41,6 @@ class GeneratedNote(Base):
         ),
         nullable=False,
         index=True,
-        unique=True,
     )
 
     summary: Mapped[str] = mapped_column(

@@ -38,6 +38,7 @@ router = APIRouter(
 )
 async def generate_notes(
     recording_id: UUID,
+    prompt_version: str = PROMPT_VERSION,
     session: AsyncSession = Depends(get_db_session),
 ) -> GeneratedNoteResponse:
     """Generate structured AI notes for a recording transcript."""
@@ -68,7 +69,9 @@ async def generate_notes(
 
     existing_result = await session.execute(
         select(GeneratedNote).where(
-            GeneratedNote.transcript_id == transcript.id
+            GeneratedNote.transcript_id == transcript.id,
+            GeneratedNote.model_name == settings.openai_model,
+            GeneratedNote.prompt_version == prompt_version,
         )
     )
     existing_note = existing_result.scalar_one_or_none()
@@ -78,7 +81,8 @@ async def generate_notes(
 
     try:
         content = await generate_note_content(
-            transcript.text
+            transcript.text,
+            prompt_version=prompt_version,
         )
 
         generated_note = GeneratedNote(
@@ -102,7 +106,7 @@ async def generate_notes(
                 content.follow_up_questions
             ),
             model_name=settings.openai_model,
-            prompt_version=PROMPT_VERSION,
+            prompt_version=prompt_version,
         )
 
         session.add(generated_note)
@@ -141,6 +145,8 @@ async def generate_notes(
 )
 async def get_notes(
     recording_id: UUID,
+    model_name: str,
+    prompt_version: str,
     session: AsyncSession = Depends(get_db_session),
 ) -> GeneratedNoteResponse:
     """Retrieve generated notes for a recording."""
@@ -161,7 +167,9 @@ async def get_notes(
 
     note_result = await session.execute(
         select(GeneratedNote).where(
-            GeneratedNote.transcript_id == transcript.id
+            GeneratedNote.transcript_id == transcript.id,
+            GeneratedNote.model_name == model_name,
+            GeneratedNote.prompt_version == prompt_version,
         )
     )
 
