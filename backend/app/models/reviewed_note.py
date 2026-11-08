@@ -9,7 +9,7 @@ from app.models.base import Base
 
 
 if TYPE_CHECKING:
-    from app.models.generated_note import GeneratedNote
+    from app.models.transcript import Transcript
 
 
 class ReviewedNote(Base):
@@ -23,16 +23,15 @@ class ReviewedNote(Base):
         default=uuid4,
     )
 
-    generated_note_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey(
-            "generated_notes.id",
-            ondelete="CASCADE",
-        ),
-        nullable=False,
-        unique=True,
-        index=True,
-    )
+    transcript_id: Mapped[UUID] = mapped_column(
+    ForeignKey(
+        "transcripts.id",
+        ondelete="CASCADE",
+    ),
+    unique=True,
+    index=True,
+    nullable=False,
+)
 
     summary: Mapped[str] = mapped_column(
         Text,
@@ -76,7 +75,6 @@ class ReviewedNote(Base):
         nullable=False,
     )
 
-    generated_note: Mapped["GeneratedNote"] = relationship(
-        "GeneratedNote",
-        back_populates="reviewed_note",
-    )
+    transcript: Mapped["Transcript"] = relationship(
+    back_populates="reviewed_note",
+)

@@ -52,10 +52,11 @@ async def evaluate_recording(
     generated_note = generated_note_result.scalar_one_or_none()
     if generated_note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Generated note not found")
-
+    
     reviewed_note_result = await session.execute(
-        select(ReviewedNote).where(ReviewedNote.generated_note_id == generated_note.id)
+    select(ReviewedNote).where(ReviewedNote.transcript_id == transcript.id)
     )
+
     reviewed_note = reviewed_note_result.scalar_one_or_none()
     if reviewed_note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reviewed note not found")

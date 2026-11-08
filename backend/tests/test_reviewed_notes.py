@@ -149,10 +149,8 @@ async def test_create_reviewed_notes(
     client: AsyncClient,
     test_session: AsyncSession,
 ) -> None:
-    recording, _, generated_note = (
-        await create_generated_note_fixture(
-            test_session
-        )
+    recording, transcript, generated_note = (
+        await create_generated_note_fixture(test_session)
     )
 
     response = await client.put(
@@ -164,9 +162,7 @@ async def test_create_reviewed_notes(
 
     data = response.json()
 
-    assert data["generated_note_id"] == str(
-        generated_note.id
-    )
+    assert data["transcript_id"] == str(transcript.id)
 
     assert data["summary"] == (
         "The team finalized the deployment plan."

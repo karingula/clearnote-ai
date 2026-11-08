@@ -92,10 +92,3 @@ class GeneratedNote(Base):
         "Transcript",
         back_populates="generated_note",
     )
-
-    reviewed_note: Mapped["ReviewedNote | None"] = relationship(
-         "ReviewedNote",
-         back_populates="generated_note",
-         cascade="all, delete-orphan",
-         uselist=False,
-    )

@@ -55,26 +55,29 @@ async def get_reviewed_notes(
             detail="Transcript not found.",
         )
 
+    # We only need to know whether at least one generated note exists.
     generated_note_result = await session.execute(
-        select(GeneratedNote).where(
+        select(GeneratedNote.id)
+        .where(
             GeneratedNote.transcript_id == transcript.id
         )
+        .limit(1)
     )
 
-    generated_note = (
+    generated_note_id = (
         generated_note_result.scalar_one_or_none()
     )
 
-    if generated_note is None:
+    if generated_note_id is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Generated notes not found.",
         )
 
+    # ReviewedNote now belongs directly to the transcript.
     reviewed_note_result = await session.execute(
         select(ReviewedNote).where(
-            ReviewedNote.generated_note_id
-            == generated_note.id
+            ReviewedNote.transcript_id == transcript.id
         )
     )
 
@@ -118,17 +121,21 @@ async def upsert_reviewed_notes(
             detail="Transcript not found.",
         )
 
+    # There may be multiple generated notes now.
+    # We only need to verify that at least one exists.
     generated_note_result = await session.execute(
-        select(GeneratedNote).where(
+        select(GeneratedNote.id)
+        .where(
             GeneratedNote.transcript_id == transcript.id
         )
+        .limit(1)
     )
 
-    generated_note = (
+    generated_note_id = (
         generated_note_result.scalar_one_or_none()
     )
 
-    if generated_note is None:
+    if generated_note_id is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -137,10 +144,10 @@ async def upsert_reviewed_notes(
             ),
         )
 
+    # One canonical reviewed note belongs to the transcript.
     reviewed_note_result = await session.execute(
         select(ReviewedNote).where(
-            ReviewedNote.generated_note_id
-            == generated_note.id
+            ReviewedNote.transcript_id == transcript.id
         )
     )
 
@@ -151,7 +158,7 @@ async def upsert_reviewed_notes(
     try:
         if reviewed_note is None:
             reviewed_note = ReviewedNote(
-                generated_note_id=generated_note.id,
+                transcript_id=transcript.id,
                 summary=payload.summary,
                 decisions_json=json.dumps(
                     payload.decisions

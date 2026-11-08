@@ -19,6 +19,7 @@ from app.models.base import Base
 if TYPE_CHECKING:
     from app.models.recording import Recording
     from app.models.generated_note import GeneratedNote
+    from app.models.reviewed_note import ReviewedNote
 
 
 class Transcript(Base):
@@ -89,6 +90,12 @@ class Transcript(Base):
         cascade="all, delete-orphan",
         uselist=False,
     )
+
+    reviewed_note: Mapped["ReviewedNote | None"] = relationship(
+    back_populates="transcript",
+    cascade="all, delete-orphan",
+    uselist=False,
+)
 
 
 class TranscriptSegment(Base):

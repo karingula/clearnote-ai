@@ -10,6 +10,7 @@ from app.models.generated_note import GeneratedNote
 from app.models.recording import Recording
 from app.models.reviewed_note import ReviewedNote
 from app.models.transcript import Transcript
+from app.models import transcript
 
 
 @pytest.mark.asyncio
@@ -57,7 +58,7 @@ async def test_create_evaluation_run(
     await test_session.flush()
 
     reviewed_note = ReviewedNote(
-        generated_note_id=generated_note.id,
+        transcript_id=transcript.id,
         summary="Reviewed summary",
         decisions_json=json.dumps(
             [
@@ -182,7 +183,7 @@ async def test_list_evaluation_runs(
     await test_session.flush()
 
     reviewed_note = ReviewedNote(
-        generated_note_id=generated_note.id,
+        transcript_id=transcript.id,
         summary="Reviewed summary",
         decisions_json=json.dumps(
             ["Deploy Monday"]
@@ -414,7 +415,7 @@ async def test_dataset_evaluation(
     await test_session.flush()
 
     reviewed_note = ReviewedNote(
-        generated_note_id=generated_note.id,
+        transcript_id=transcript.id,
         summary="Reviewed summary",
         decisions_json="[]",
         action_items_json="[]",
@@ -509,7 +510,7 @@ async def test_dataset_evaluation(
     await test_session.flush()
 
     second_reviewed_note = ReviewedNote(
-        generated_note_id=second_generated_note.id,
+        transcript_id=second_generated_note.id,
         summary="Another reviewed summary",
         decisions_json="[]",
         action_items_json="[]",
@@ -654,7 +655,7 @@ async def test_compare_experiments(
     await test_session.flush()
 
     reviewed_note_a = ReviewedNote(
-        generated_note_id=generated_note_a.id,
+        transcript_id=transcript_a.id,
         summary="Reviewed v1 summary",
         decisions_json="[]",
         action_items_json="[]",
@@ -743,7 +744,7 @@ async def test_compare_experiments(
     await test_session.flush()
 
     reviewed_note_b = ReviewedNote(
-        generated_note_id=generated_note_b.id,
+        transcript_id=transcript_b.id,
         summary="Reviewed v2 summary",
         decisions_json="[]",
         action_items_json="[]",

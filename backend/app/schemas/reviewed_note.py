@@ -17,9 +17,13 @@ class ReviewedNoteContent(BaseModel):
 class ReviewedNoteUpsertRequest(ReviewedNoteContent):
     pass
 
-
-class ReviewedNoteResponse(ReviewedNoteContent):
+class ReviewedNoteResponse(BaseModel):
     id: UUID
-    generated_note_id: UUID
+    transcript_id: UUID
+    summary: str
+    decisions: list[str]
+    action_items: list[ActionItem]
+    key_points: list[str]
+    follow_up_questions: list[str]
     reviewed_at: datetime
     updated_at: datetime

@@ -10,7 +10,7 @@ def reviewed_note_to_response(
 ) -> ReviewedNoteResponse:
     return ReviewedNoteResponse(
         id=reviewed_note.id,
-        generated_note_id=reviewed_note.generated_note_id,
+        transcript_id=reviewed_note.transcript_id,
         summary=reviewed_note.summary,
         decisions=json.loads(
             reviewed_note.decisions_json
